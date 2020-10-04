@@ -7,6 +7,41 @@ const User = require('../models/User');
 const auth = require('./verifyToken');
 const logger = require('../logger');
 
+
+/**
+ * Register a user
+ * 
+ */
+router.post('/setpass', async (req, res) => {
+    logger.info('PATCH - body: ' + JSON.stringify(req.body));
+
+    const userExists = await User.findOne({ username: req.body.username, registrationKey: req.body.registrationKey });
+    if (!userExists) {
+        logger.error('You cannot reset the passwort');
+        return res.status(400).send({ error: 'You cannot reset the passwort' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    try {
+        const update = await User.updateOne(
+            { username: req.body.username, registrationKey: req.body.registrationKey },
+            {
+                $set: {
+                    password: hashedPassword,
+                    registrationKey: 'matched',
+                },
+            }
+        );
+        logger.debug(JSON.stringify('Passwort successfuly set for user: ' + req.body.username))
+        res.send({ message: 'Passwort successfuly set' });
+    } catch (error) {
+        logger.error(error);
+        res.status(500).send(error);
+    }
+});
+
 /**
  * Register a user
  * 

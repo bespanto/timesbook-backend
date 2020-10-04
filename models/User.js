@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 mongoose.set('useCreateIndex', true);
 
-const userSchema = mongoose.Schema({
+const UserSchema = mongoose.Schema({
 
     name: {
         type: String,
@@ -40,4 +40,5 @@ const userSchema = mongoose.Schema({
     },
 })
 
-module.exports = mongoose.model('Users', userSchema);
+UserSchema.index({ username: 1}, { unique: true })
+module.exports = mongoose.model('Users', UserSchema);

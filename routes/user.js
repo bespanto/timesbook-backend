@@ -16,7 +16,7 @@ const OAuth2 = google.auth.OAuth2;
 /**
  * Sent e-mail via smtp
  */
-async function sendMail(regKey) {
+async function sendMail(mailOptions) {
 
     const OAUTH_PLAYGROUND = process.env.OAUTH_PLAYGROUND;
     const SENDER_EMAIL_ADDRESS = process.env.SENDER_EMAIL_ADDRESS;
@@ -34,7 +34,20 @@ async function sendMail(regKey) {
         refresh_token: MAILING_SERVICE_REFRESH_TOKEN,
     });
     const accessToken = oauth2Client.getAccessToken();
-    logger.info(accessToken);
+
+    let testAccount = await nodemailer.createTestAccount();
+
+    // create reusable transporter object using the default SMTP transport
+    // let transporter = nodemailer.createTransport({
+    //   host: "smtp.ethereal.email",
+    //   port: 587,
+    //   secure: false, // true for 465, false for other ports
+    //   auth: {
+    //     user: testAccount.user, // generated ethereal user
+    //     pass: testAccount.pass, // generated ethereal password
+    //   },
+    // });
+
     const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
@@ -49,10 +62,15 @@ async function sendMail(regKey) {
 
     await transporter.sendMail({
         from: '"Timesbook" <max.becker@sstyle.org>',
-        to: "bespanto@gmail.com",
-        subject: "Du bist zu Timesbook eingeladen",
+        to: mailOptions.username,
+        subject: "Sie sind für die Nutzung von Timesbook eingeladen",
         text: "Hello world?",
-        html: "<b>" + regKey + "</b>",
+        html: '<p>Sehr geehrter Nutzer,</p><br>'
+        + `<p>Sie sind vom Verwalter Ihrer Organisation (${mailOptions.orga}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>`
+        + `<p><a href="http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}">http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}</a></p><br/>`
+        + '<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>'
+        + '<p>Vielen Dank für Ihre Registrierung!<p/><br/>'
+        + 'Timesbook'
     })
 }
 
@@ -102,15 +120,19 @@ router.patch("/invite", auth, async (req, res) => {
                                 name: req.body.name,
                                 role: "user",
                                 organization: req.body.organization,
-                                regisrationKey: randString,
+                                registrationKey: randString,
                             },
                         },
                         { upsert: true }
                     );
-                    sendMail(randString)
+                    sendMail({
+                        regKey: randString,
+                        username: req.body.username,
+                        orga: req.body.organization
+                    })
                         .then((response) => {
-                            logger.debug(response);
-                            res.send("User '" + req.body.username + "' was invited");
+                            logger.info("User '" + req.body.username + "' was invited");
+                            res.send({message: `User ${req.body.username} was invited`});
                         })
                         .catch((err) => {
                             logger.error("Mailer error: " + err);
