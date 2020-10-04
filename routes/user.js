@@ -163,18 +163,60 @@ router.patch("/:username", auth, async (req, res) => {
                 },
             }
         );
-        res.send({success: 'User profile was updated'});
+        res.send({ success: 'User profile was updated' });
     } catch (error) {
         logger.error('Cannot update user profile: ' + error);
-        res.status(500).send({error: 'Cannot update user profile'});
+        res.status(500).send({ error: 'Cannot update user profile' });
     }
+});
+
+/**
+ * Gets all users of a organization
+ *
+ */
+router.get("/", auth, async (req, res) => {
+    const token = req.header("auth-token");
+
+    if (!token) {
+        logger.error({ auth: false, message: "No token provided." });
+        return res.status(401).send({ auth: false, message: "No token provided." });
+    }
+
+    jwt.verify(token, process.env.TOKEN_SECRET, async function (err, decoded) {
+        if (err)
+            return res.status(500).send({ auth: false, message: "Failed to authenticate token." });
+        logger.debug(JSON.stringify(decoded));
+
+        const user = await User.findById(decoded._id, { password: 0, _id: 0 });
+        logger.debug(JSON.stringify(user));
+        if (!user) {
+            logger.error({ error: "No profile was found" });
+            return res.status(401).send({ error: "No profile was found" });
+        }
+        else {
+            if (user.role === "admin") {
+                try {
+                    const users = await User.find({ organization: user.organization });
+                    res.send(users);
+                } catch (error) {
+                    logger.error(error);
+                    res.status(500).send({ error: 'Server error. Cannot retrieve user list' });
+                }
+            } else {
+                logger.error({ error: "You have no permissions to invite users" });
+                return res
+                    .status(403)
+                    .send({ error: "You have no permissions to invite users" });
+            }
+        }
+    });
 });
 
 /**
  * Gets user profile
  *
  */
-router.get("/", auth, async (req, res) => {
+router.get("/profile", auth, async (req, res) => {
     const token = req.header("auth-token");
 
     if (!token) {
