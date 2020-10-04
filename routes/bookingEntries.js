@@ -1,13 +1,12 @@
 const express = require('express');
+const router = express.Router();
 const moment = require('moment');
 const auth = require('./verifyToken');
-const router = express.Router();
 const BookingEntry = require('../models/BookingEntry');
 const logger = require('../logger');
 
 /**
- * 
- * @param {*} message 
+ * Exception for date checks
  */
 function InvalidDateException(message) {
     this.name = 'InvalidDateException',
@@ -15,7 +14,10 @@ function InvalidDateException(message) {
 }
 
 /**
- * Prüft ob start vor end und start, end innerhalb von day liegt.
+ * Checks:
+ *      1. Date and time formats
+ *      2. 'start' befor 'end'.
+ *      3. 'start' and 'end' within booking day
  * 
  */
 function checkTimes(reqDay, reqStart, reqEnd, reqPause = '00:00') {
@@ -31,7 +33,6 @@ function checkTimes(reqDay, reqStart, reqEnd, reqPause = '00:00') {
     const day = moment(reqDay, moment.ISO_8601);
     const start = moment(reqStart, moment.ISO_8601);
     const end = moment(reqEnd, moment.ISO_8601);
-
 
     if (!start.isAfter(day))
         throw new InvalidDateException('\'start\' is out of booking day');
@@ -49,7 +50,9 @@ function checkTimes(reqDay, reqStart, reqEnd, reqPause = '00:00') {
 }
 
 /**
- * 
+ * Checks:
+ *      1. Date format
+ *      2. 'start' befor 'end'.
  */
 function checkStartEnd(reqStart, reqEnd) {
 
@@ -66,7 +69,7 @@ function checkStartEnd(reqStart, reqEnd) {
 }
 
 /**
- * Prüft, ob day richtiges Datumsformat hat.
+ * Checks day format
  * 
  */
 function checkDay(reqDay) {
@@ -78,7 +81,7 @@ function checkDay(reqDay) {
 }
 
 /**
- * 
+ * Trim body entries
  */
 function trimBody(body) {
     if (body.username !== undefined)
@@ -102,7 +105,7 @@ function trimBody(body) {
 }
 
 /**
- * Create new booking entry
+ * Creates a new booking entry
  * 
  */
 router.post('/:username', auth,

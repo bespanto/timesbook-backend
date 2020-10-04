@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-mongoose.set('useCreateIndex', true);
 
 const BookingEntrySchema = mongoose.Schema({
 
@@ -29,5 +28,4 @@ const BookingEntrySchema = mongoose.Schema({
     },
 })
 
-// BookingEntrySchema.index({ username: 1, day: 1 }, { unique: true })
 module.exports = mongoose.model('BookingEntries', BookingEntrySchema);

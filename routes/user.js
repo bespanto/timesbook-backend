@@ -11,10 +11,8 @@ const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 const OAuth2 = google.auth.OAuth2;
 
-
-
 /**
- * Sent e-mail via smtp
+ * Sents e-mail via smtp
  */
 async function sendMail(mailOptions) {
 
@@ -23,7 +21,7 @@ async function sendMail(mailOptions) {
     const MAILING_SERVICE_CLIENT_ID = process.env.MAILING_SERVICE_CLIENT_ID;
     const MAILING_SERVICE_CLIENT_SECRET = process.env.MAILING_SERVICE_CLIENT_SECRET;
     const MAILING_SERVICE_REFRESH_TOKEN = process.env.MAILING_SERVICE_REFRESH_TOKEN;
-    
+
     const oauth2Client = new OAuth2(
         MAILING_SERVICE_CLIENT_ID,
         MAILING_SERVICE_CLIENT_SECRET,
@@ -66,51 +64,46 @@ async function sendMail(mailOptions) {
         subject: "Sie sind für die Nutzung von Timesbook eingeladen",
         text: "Hello world?",
         html: '<p>Sehr geehrter Nutzer,</p><br>'
-        + `<p>Sie sind vom Verwalter Ihrer Organisation (${mailOptions.orga}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>`
-        + `<p><a href="http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}">http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}</a></p><br/>`
-        + '<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>'
-        + '<p>Vielen Dank für Ihre Registrierung!<p/><br/>'
-        + 'Timesbook'
+            + `<p>Sie sind vom Verwalter Ihrer Organisation (${mailOptions.orga}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>`
+            + `<p><a href="http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}">http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}</a></p><br/>`
+            + '<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>'
+            + '<p>Vielen Dank für Ihre Registrierung!<p/><br/>'
+            + 'Timesbook'
     })
 }
 
 /**
- * Invite user via e-mail
+ * Invites user via e-mail
  *
  */
 router.patch("/invite", auth, async (req, res) => {
-    logger.info(
-        "Invite user: Post - username: " +
-        req.params.username +
-        ", body: " +
-        JSON.stringify(req.body)
+    logger.info('PATCH request on endpoint \'/invite\'. Body: ' + JSON.stringify(req.body)
     );
 
     const token = req.header("auth-token");
     if (!token) {
-        logger.error({ auth: false, message: "No token provided." });
-        return res.status(401).send({ auth: false, message: "No token provided." });
+        logger.error('No token provided');
+        return res.status(401).send({ error: "No token provided." });
     }
 
     jwt.verify(token, process.env.TOKEN_SECRET, async function (err, decoded) {
         if (err)
             return res
                 .status(500)
-                .send({ auth: false, message: "Failed to authenticate token." });
+                .send({ error: "Failed to authenticate token" });
         logger.debug(JSON.stringify(decoded));
 
         const user = await User.findById(decoded._id, { password: 0, _id: 0 });
         logger.debug(JSON.stringify(user));
         if (!user) {
-            logger.error({ error: "Profile is not found" });
-            return res.status(401).send({ error: "Profile is not found" });
+            logger.error({ error: "No profile was found" });
+            return res.status(401).send({ error: "No profile was found" });
         } else {
             if (
                 user.role === "admin" &&
                 user.organization === req.body.organization
             ) {
                 const randString = cryptoRandomString({ length: 30 });
-                logger.debug("regisrationKey: " + randString);
                 try {
                     const update = await User.updateOne(
                         { username: req.body.username },
@@ -132,37 +125,32 @@ router.patch("/invite", auth, async (req, res) => {
                     })
                         .then((response) => {
                             logger.info("User '" + req.body.username + "' was invited");
-                            res.send({message: `User ${req.body.username} was invited`});
+                            res.send({ success: `User ${req.body.username} was invited` });
                         })
                         .catch((err) => {
                             logger.error("Mailer error: " + err);
-                            res.status(500).send(err);
+                            res.status(500).send({ error: 'User cannot be invited. Mailer error.' });
                         });
                 } catch (error) {
                     logger.error(error);
                     res.status(500).send(error);
                 }
             } else {
-                logger.error({ error: "You have not permissions invite users" });
+                logger.error({ error: "You have no permissions to invite users" });
                 return res
                     .status(403)
-                    .send({ error: "You have not permissions invite users" });
+                    .send({ error: "You have no permissions to invite users" });
             }
         }
     });
 });
 
 /**
- * Update user profile
+ * Updates user profile
  *
  */
 router.patch("/:username", auth, async (req, res) => {
-    logger.info(
-        "PATCH - username: " +
-        req.params.username +
-        ", body: " +
-        JSON.stringify(req.body)
-    );
+    logger.info('PATCH request on endpoint \'/:username\'. Username: ' + req.params.username + ", body: " + JSON.stringify(req.body));
 
     try {
         const update = await User.updateOne(
@@ -175,15 +163,15 @@ router.patch("/:username", auth, async (req, res) => {
                 },
             }
         );
-        res.send(update);
+        res.send({success: 'User profile was updated'});
     } catch (error) {
-        logger.error(error);
-        res.status(500).send(error);
+        logger.error('Cannot update user profile: ' + error);
+        res.status(500).send({error: 'Cannot update user profile'});
     }
 });
 
 /**
- * Get user profile
+ * Gets user profile
  *
  */
 router.get("/", auth, async (req, res) => {
