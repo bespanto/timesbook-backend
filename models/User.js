@@ -24,7 +24,6 @@ const UserSchema = mongoose.Schema({
     role: {
         type: String,
         required: true,
-        default: 'admin'
     },
     organization: {
         type: String,
@@ -33,7 +32,7 @@ const UserSchema = mongoose.Schema({
     registrationKey: {
         type: String,
     },
-    date: {
+    registrationDate: {
         type: Date,
         required: true,
         default: Date.now
