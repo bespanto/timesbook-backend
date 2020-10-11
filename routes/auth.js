@@ -137,7 +137,7 @@ router.post("/login", async (req, res) => {
     );
     return res
       .status(400)
-      .send({ error: "Login is failed. Username (e-mail)is not registered" });
+      .send({ errorCode: 4003, error: "Login is failed. Username (e-mail) is not registered: " + req.body.username});
   }
 
   const validPass = await bcrypt.compare(req.body.password, user.password);
@@ -145,7 +145,7 @@ router.post("/login", async (req, res) => {
     logger.error(
       "Login is failed. Invalid password for user: " + req.body.username
     );
-    return res.status(400).send({ error: "Login is failed. Invalid password" });
+    return res.status(400).send({errorCode: 4004, error: "Login is failed. Invalid password for user: " + req.body.username});
   }
 
   const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {
