@@ -18,13 +18,30 @@ router.post("/setpass", async (req, res) => {
 
   const userExists = await User.findOne({
     username: req.body.username,
-    registrationKey: req.body.registrationKey,
   });
   if (!userExists) {
     logger.error(
-      `Reset password is failed. Username: ${req.body.username}, registrationKey: ${req.body.registrationKey}`
+      `Reset password is failed. Username: ${req.body.username} is not registered`
     );
-    return res.status(400).send({ error: "Reset password is failed" });
+    return res
+      .status(400)
+      .send({ errorCode: 4003, message: "Reset password is failed" });
+  } else if (userExists.registrationKey === "matched") {
+    logger.error(`The Password for user ${req.body.username} is already set`);
+    return res
+      .status(400)
+      .send({
+        errorCode: 4005,
+        message: `The Password for user ${req.body.username} is already set`,
+      });
+  } else if (userExists.registrationKey !== req.body.registrationKey) {
+    logger.error(`Bad registration key for user: ${req.body.username}`);
+    return res
+      .status(400)
+      .send({
+        errorCode: 4006,
+        message: `Bad registration key for user: ${req.body.username}`,
+      });
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -137,7 +154,12 @@ router.post("/login", async (req, res) => {
     );
     return res
       .status(400)
-      .send({ errorCode: 4003, error: "Login is failed. Username (e-mail) is not registered: " + req.body.username});
+      .send({
+        errorCode: 4003,
+        error:
+          "Login is failed. Username (e-mail) is not registered: " +
+          req.body.username,
+      });
   }
 
   const validPass = await bcrypt.compare(req.body.password, user.password);
@@ -145,7 +167,13 @@ router.post("/login", async (req, res) => {
     logger.error(
       "Login is failed. Invalid password for user: " + req.body.username
     );
-    return res.status(400).send({errorCode: 4004, error: "Login is failed. Invalid password for user: " + req.body.username});
+    return res
+      .status(400)
+      .send({
+        errorCode: 4004,
+        error:
+          "Login is failed. Invalid password for user: " + req.body.username,
+      });
   }
 
   const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {

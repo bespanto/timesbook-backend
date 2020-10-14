@@ -7,7 +7,13 @@ The user cannot be registered. Username (e-mail) already exists.
 The user cannot be registered. Admin account for organization already exists.
 
 ### 4003
-Login is failed. Username (e-mail) is not registered.
+Username (e-mail) is not registered.
 
 ### 4004
-Login is failed. Invalid password for user.
+Invalid password for user.
+
+### 4005
+The password for user is already set.
+
+### 4006
+Bad registartion key.
