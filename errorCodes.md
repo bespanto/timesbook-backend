@@ -32,7 +32,7 @@ Security error. JWT cannot be verified.
 No user found for the given id.
 
 ### 4010
-User have no permissions to invite other users.
+User have no permissions for this operation.
 
 #
 ## 500 codes

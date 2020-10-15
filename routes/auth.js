@@ -13,7 +13,7 @@ const logger = require("../utils/logger");
  */
 router.post("/setpass", async (req, res) => {
   logger.info(
-    "POST request on endpoint '/setpass'. Body: " + JSON.stringify(req.body)
+    "POST request on endpoint '/auth/setpass'. Body: " + JSON.stringify(req.body)
   );
 
   const userExists = await User.findOne({
@@ -65,8 +65,8 @@ router.post("/setpass", async (req, res) => {
     );
     res.send({ success: "Passwort successfully set" });
   } catch (error) {
-    logger.error(error);
-    res.status(500).send(error);
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({errorCode: 5001, message: error});
   }
 });
 
@@ -76,7 +76,7 @@ router.post("/setpass", async (req, res) => {
  */
 router.post("/register", async (req, res) => {
   logger.info(
-    "POST request on endpoint '/register'. Body: " + JSON.stringify(req.body)
+    "POST request on endpoint '/auth/register'. Body: " + JSON.stringify(req.body)
   );
 
   // check e-mail in DB
@@ -84,7 +84,7 @@ router.post("/register", async (req, res) => {
   if (userExists) {
     logger.error(
       "The user cannot be registered. E-mail already exists: " +
-        req.body.username
+      req.body.username
     );
     return res.status(400).send({
       errorCode: 4001,
@@ -101,12 +101,8 @@ router.post("/register", async (req, res) => {
   });
   if (adminForOrgaExists) {
     logger.error(
-      "The user cannot '" +
-        req.body.username +
-        "' be registered. The organization '" +
-        req.body.organization +
-        "' has already admin account: " +
-        req.body.username
+      "The user cannot '" + req.body.username + "' be registered. The organization '" +
+      req.body.organization + "' has already admin account: " + req.body.username
     );
     return res.status(400).send({
       errorCode: 4002,
@@ -131,8 +127,8 @@ router.post("/register", async (req, res) => {
     logger.debug(JSON.stringify(savedUser));
     res.send({ success: "User is registered.", id: user._id });
   } catch (error) {
-    logger.error(error);
-    res.status(500).send(error);
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({errorCode: 5001, message: error});
   }
 });
 
@@ -141,16 +137,13 @@ router.post("/register", async (req, res) => {
  *
  */
 router.post("/login", async (req, res) => {
-  logger.info(
-    "POST request on endpoint '/login'. Body: " + JSON.stringify(req.body)
-  );
+  logger.info("POST request on endpoint '/auth/login'. Body: " + JSON.stringify(req.body));
 
   const user = await User.findOne({ username: req.body.username });
-  console.log(user);
   if (!user) {
     logger.error(
       "Login is failed. Username (e-mail)is not registered: " +
-        req.body.username
+      req.body.username
     );
     return res
       .status(400)
@@ -180,35 +173,6 @@ router.post("/login", async (req, res) => {
     expiresIn: 86400,
   });
   res.header("auth-token", token).send({ jwt: token });
-});
-
-/**
- *  Gets user profile by jwt.
- */
-router.get("/profile", auth, async (req, res) => {
-  const token = req.header("auth-token");
-  logger.info(
-    `GET request on endpoint '/profile'. Header 'auth-token' => ${token}`
-  );
-
-  if (!token)
-    return res.status(401).send({ auth: false, message: "No token provided." });
-
-  jwt.verify(token, process.env.TOKEN_SECRET, async function (err, decoded) {
-    if (err) {
-      logger.error("Failed to authenticate token: " + token);
-      return res.status(500).send({ error: "Failed to authenticate token." });
-    }
-
-    logger.debug(JSON.stringify(decoded));
-    const user = await User.findById(decoded._id, { password: 0, _id: 0 });
-    logger.debug(JSON.stringify(user));
-    if (!user) {
-      logger.error("Profile is not found");
-      return res.status(400).send({ error: "Profile is not found" });
-    }
-    res.status(200).send(user);
-  });
 });
 
 module.exports = router;
