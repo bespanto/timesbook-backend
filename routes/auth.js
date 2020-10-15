@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const Joi = require("@hapi/joi");
 const User = require("../models/User");
 const auth = require("./verifyToken");
-const logger = require("../logger");
+const logger = require("../utils/logger");
 
 /**
  * Sets password for user with registrationKey

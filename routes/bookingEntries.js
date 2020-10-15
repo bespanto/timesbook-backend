@@ -3,7 +3,7 @@ const router = express.Router();
 const moment = require("moment");
 const auth = require("./verifyToken");
 const BookingEntry = require("../models/BookingEntry");
-const logger = require("../logger");
+const logger = require("../utils/logger");
 
 /**
  * Exception for date checks

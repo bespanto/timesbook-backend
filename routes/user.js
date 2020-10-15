@@ -6,7 +6,7 @@ const router = express.Router();
 const User = require("../models/User");
 const auth = require("./verifyToken");
 const cryptoRandomString = require("crypto-random-string");
-const logger = require("../logger");
+const logger = require("../utils/logger");
 const mailer = require("../utils/mailer");
 
 
