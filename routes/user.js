@@ -18,73 +18,61 @@ router.patch("/invite", auth, async (req, res) => {
   logger.info(
     "PATCH request on endpoint '/invite'. Body: " + JSON.stringify(req.body)
   );
-
-  const token = req.header("auth-token");
-  if (!token) {
-    logger.error("No token provided");
-    return res.status(401).send({ error: "No token provided." });
-  }
-
-  jwt.verify(token, process.env.TOKEN_SECRET, async function (err, decoded) {
-    if (err)
-      return res.status(500).send({ error: "Failed to authenticate token" });
-    logger.debug(JSON.stringify(decoded));
-
-    const user = await User.findById(decoded._id, { password: 0, _id: 0 });
+  try {
+    const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
     logger.debug(JSON.stringify(user));
     if (!user) {
-      logger.error({ error: "No profile was found" });
-      return res.status(401).send({ error: "No profile was found" });
+      logger.error({ error: "No user found for the given id" });
+      return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
     } else {
       if (
         user.role === "admin" &&
         user.organization === req.body.organization
       ) {
         const randString = cryptoRandomString({ length: 30 });
-        try {
-          const update = await User.updateOne(
-            { username: req.body.username },
-            {
-              $set: {
-                username: req.body.username,
-                name: req.body.name,
-                role: "user",
-                organization: req.body.organization,
-                registrationKey: randString,
-              },
+        const update = await User.updateOne(
+          { username: req.body.username },
+          {
+            $set: {
+              username: req.body.username,
+              name: req.body.name,
+              role: "user",
+              organization: req.body.organization,
+              registrationKey: randString,
             },
-            { upsert: true }
-          );
-          mailer(
-            req.body.username,
-            "<p>Sehr geehrter Nutzer,</p><br>" +
-            `<p>Sie sind vom Verwalter Ihrer Organisation (${req.body.organization}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-            `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
-            "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-            "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
-            "Timesbook")
-            .then((response) => {
-              logger.info("User '" + req.body.username + "' was invited");
-              res.send({ success: `User ${req.body.username} was invited` });
-            })
-            .catch((err) => {
-              logger.error("Mailer error: " + err);
-              res
-                .status(500)
-                .send({ error: "User cannot be invited. Mailer error." });
-            });
-        } catch (error) {
-          logger.error(error);
-          res.status(500).send(error);
-        }
+          },
+          { upsert: true }
+        );
+        mailer(
+          req.body.username,
+          "<p>Sehr geehrter Nutzer,</p><br>" +
+          `<p>Sie sind vom Verwalter Ihrer Organisation (${req.body.organization}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
+          `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+          "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+          "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+          "Timesbook")
+          .then((response) => {
+            logger.info("User '" + req.body.username + "' was invited");
+            res.send({ success: `User ${req.body.username} was invited` });
+          })
+          .catch((err) => {
+            logger.error("Error while sending e-mail: " + err);
+            res
+              .status(500)
+              .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+          });
+
       } else {
-        logger.error({ error: "You have no permissions to invite users" });
+        logger.error("User have no permissions to invite other users");
         return res
           .status(403)
-          .send({ error: "You have no permissions to invite users" });
+          .send({ errorCode: 4010, message: "User have no permissions to invite other users" });
       }
     }
-  });
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({errorCode: 5001, message: error});
+  }
 });
 
 /**

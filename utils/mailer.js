@@ -31,7 +31,6 @@ async function sendMail(recipient, mailBody) {
   //   process.env.MAILING_SERVICE_CLIENT_SECRET;
   // const MAILING_SERVICE_REFRESH_TOKEN =
   //   process.env.MAILING_SERVICE_REFRESH_TOKEN;
-
   // const oauth2Client = new OAuth2(
   //   MAILING_SERVICE_CLIENT_ID,
   //   MAILING_SERVICE_CLIENT_SECRET,
@@ -41,12 +40,10 @@ async function sendMail(recipient, mailBody) {
   // oauth2Client.setCredentials({
   //   refresh_token: MAILING_SERVICE_REFRESH_TOKEN,
   // });
-
   // const accessToken = oauth2Client.getAccessToken()
-  //   .then(resp => console.log(res))
+  //   .then(resp => console.log(resp))
   //   .catch(err => {
-  //     console.log('catch')
-  //     console.error(err.response)
+  //     console.log(err);
   //   });
 
   // transporter = nodemailer.createTransport({
@@ -62,14 +59,13 @@ async function sendMail(recipient, mailBody) {
   // });
 
 
-  await transporter.sendMail({
-    from: '"Timesbook" <max.becker@sstyle.org>',
-    to: recipient,
-    subject: "Sie sind für die Nutzung von Timesbook eingeladen",
-    text: "Hello world?",
-    html: mailBody,
-  });
-
+  // await transporter.sendMail({
+  //   from: '"Timesbook" <max.becker@sstyle.org>',
+  //   to: recipient,
+  //   subject: "Sie sind für die Nutzung von Timesbook eingeladen",
+  //   text: "Hello world?",
+  //   html: mailBody,
+  // });
 }
 
 
