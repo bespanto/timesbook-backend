@@ -7,72 +7,8 @@ const User = require("../models/User");
 const auth = require("./verifyToken");
 const cryptoRandomString = require("crypto-random-string");
 const logger = require("../logger");
-const nodemailer = require("nodemailer");
-const { google } = require("googleapis");
-const OAuth2 = google.auth.OAuth2;
+const mailer = require("../utils/mailer");
 
-/**
- * Sents e-mail via smtp
- */
-async function sendMail(mailOptions) {
-  const OAUTH_PLAYGROUND = process.env.OAUTH_PLAYGROUND;
-  const SENDER_EMAIL_ADDRESS = process.env.SENDER_EMAIL_ADDRESS;
-  const MAILING_SERVICE_CLIENT_ID = process.env.MAILING_SERVICE_CLIENT_ID;
-  const MAILING_SERVICE_CLIENT_SECRET =
-    process.env.MAILING_SERVICE_CLIENT_SECRET;
-  const MAILING_SERVICE_REFRESH_TOKEN =
-    process.env.MAILING_SERVICE_REFRESH_TOKEN;
-
-  const oauth2Client = new OAuth2(
-    MAILING_SERVICE_CLIENT_ID,
-    MAILING_SERVICE_CLIENT_SECRET,
-    OAUTH_PLAYGROUND
-  );
-
-  oauth2Client.setCredentials({
-    refresh_token: MAILING_SERVICE_REFRESH_TOKEN,
-  });
-  const accessToken = oauth2Client.getAccessToken();
-
-  let testAccount = await nodemailer.createTestAccount();
-
-  // create reusable transporter object using the default SMTP transport
-  // let transporter = nodemailer.createTransport({
-  //   host: "smtp.ethereal.email",
-  //   port: 587,
-  //   secure: false, // true for 465, false for other ports
-  //   auth: {
-  //     user: testAccount.user, // generated ethereal user
-  //     pass: testAccount.pass, // generated ethereal password
-  //   },
-  // });
-
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      type: "OAuth2",
-      user: SENDER_EMAIL_ADDRESS,
-      clientId: MAILING_SERVICE_CLIENT_ID,
-      clientSecret: MAILING_SERVICE_CLIENT_SECRET,
-      refreshToken: MAILING_SERVICE_REFRESH_TOKEN,
-      accessToken,
-    },
-  });
-
-  await transporter.sendMail({
-    from: '"Timesbook" <max.becker@sstyle.org>',
-    to: mailOptions.username,
-    subject: "Sie sind für die Nutzung von Timesbook eingeladen",
-    text: "Hello world?",
-    html:
-      "<p>Sehr geehrter Nutzer,</p><br>" +
-      `<p>Sie sind vom Verwalter Ihrer Organisation (${mailOptions.orga}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-      `<p><a href="http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}">http://localhost:3000/resetPassword?username=${mailOptions.username}&regKey=${mailOptions.regKey}</a></p><br/>` +
-      "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-      "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
-      "Timesbook",
-  });
-}
 
 /**
  * Invites user via e-mail
@@ -119,11 +55,14 @@ router.patch("/invite", auth, async (req, res) => {
             },
             { upsert: true }
           );
-          sendMail({
-            regKey: randString,
-            username: req.body.username,
-            orga: req.body.organization,
-          })
+          mailer(
+            req.body.username,
+            "<p>Sehr geehrter Nutzer,</p><br>" +
+            `<p>Sie sind vom Verwalter Ihrer Organisation (${req.body.organization}) zur Nutzung von ‘Timesbook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
+            `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+            "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+            "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+            "Timesbook")
             .then((response) => {
               logger.info("User '" + req.body.username + "' was invited");
               res.send({ success: `User ${req.body.username} was invited` });
@@ -155,9 +94,9 @@ router.patch("/invite", auth, async (req, res) => {
 router.patch("/:username", auth, async (req, res) => {
   logger.info(
     "PATCH request on endpoint '/:username'. Username: " +
-      req.params.username +
-      ", body: " +
-      JSON.stringify(req.body)
+    req.params.username +
+    ", body: " +
+    JSON.stringify(req.body)
   );
 
   try {
