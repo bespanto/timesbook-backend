@@ -65,14 +65,14 @@ router.post("/setpass", async (req, res) => {
 
   const userExists = await User.findOne({
     username: req.body.username,
+    registrationKey: req.body.registrationKey,
   });
   if (!userExists) {
     logger.error(
-      `Reset password is failed. Username: ${req.body.username} is not registered`
+      `Reset password is failed. Username: ${req.body.username} is not registered or registartion key is invalid`
     );
-    return res
-      .status(400)
-      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered" });
+    return res.status(400)
+      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
   } else if (userExists.registrationKey === "matched") {
     logger.error(`The Password for user ${req.body.username} is already set`);
     return res
