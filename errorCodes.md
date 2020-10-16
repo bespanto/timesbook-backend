@@ -5,13 +5,13 @@
 #
 
 ### 4001
-The user cannot be registered. Username (e-mail) already exists.
+Username (e-mail) already exists.
 
 ### 4002
-The user cannot be registered. Admin account for organization already exists.
+Admin account for organization already exists.
 
 ### 4003
-Username (e-mail) is not registered.
+Username (e-mail) is not registered or registartion key is invalid.
 
 ### 4004
 Invalid password for user.
@@ -33,6 +33,7 @@ No user found for the given id.
 
 ### 4010
 User have no permissions for this operation.
+
 
 #
 ## 500 codes

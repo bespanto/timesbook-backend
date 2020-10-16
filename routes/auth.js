@@ -19,13 +19,25 @@ router.patch("/confirmation", async (req, res) => {
     "POST request on endpoint '/auth/confirmation'. Body: " + JSON.stringify(req.body)
   );
 
+  const accountMatched = await User.findOne({
+    username: req.body.username,
+    registrationKey: 'matched',
+  });
+  if (accountMatched) {
+    logger.error(
+      `Account ${req.body.username} was already confirmed`
+    );
+    return res.status(200)
+      .send({ success: "Account " + req.body.username + "' was already confirmed." });
+  }
+
   const userExists = await User.findOne({
     username: req.body.username,
     registrationKey: req.body.registrationKey,
   });
   if (!userExists) {
     logger.error(
-      `Reset password is failed. Username: ${req.body.username} is not registered or registartion key is invalid`
+      `Username: ${req.body.username} is not registered or registartion key is invalid`
     );
     return res.status(400)
       .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
@@ -165,7 +177,7 @@ router.post("/register", async (req, res) => {
     req.body.username,
     "<p>Sehr geehrter Nutzer,</p><br>" +
     `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘Timesbook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-    `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+    `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
     "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
     "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
     "Timesbook")
