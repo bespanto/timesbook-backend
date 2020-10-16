@@ -9,6 +9,51 @@ const logger = require("../utils/logger");
 const cryptoRandomString = require("crypto-random-string");
 const mailer = require("../utils/mailer");
 
+
+/**
+ * Sets password for user with registrationKey
+ *
+ */
+router.patch("/confirmation", async (req, res) => {
+  logger.info(
+    "POST request on endpoint '/auth/confirmation'. Body: " + JSON.stringify(req.body)
+  );
+
+  const userExists = await User.findOne({
+    username: req.body.username,
+    registrationKey: req.body.registrationKey,
+  });
+  if (!userExists) {
+    logger.error(
+      `Reset password is failed. Username: ${req.body.username} is not registered or registartion key is invalid`
+    );
+    return res.status(400)
+      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
+  } else {
+    try {
+      const update = await User.updateOne(
+        {
+          username: req.body.username,
+          registrationKey: req.body.registrationKey,
+        },
+        {
+          $set: {
+            status: "confirmed",
+            registrationKey: "matched",
+          },
+        }
+      );
+      logger.info("The account '" + req.body.username + "' was confirmed");
+      res.send({ success: "The account was confirmed" });
+    }
+    catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
+  }
+
+});
+
 /**
  * Sets password for user with registrationKey
  *
@@ -146,9 +191,9 @@ router.post("/register", async (req, res) => {
       registrationKey: randString,
     });
 
-      const savedUser = await user.save();
-      logger.debug(JSON.stringify(savedUser));
-      res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was registered` });
+    const savedUser = await user.save();
+    logger.debug(JSON.stringify(savedUser));
+    res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was registered` });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
     res.status(500).send({ errorCode: 5001, message: error });

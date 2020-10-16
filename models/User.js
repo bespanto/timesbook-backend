@@ -30,6 +30,10 @@ const UserSchema = mongoose.Schema({
   registrationKey: {
     type: String,
   },
+  status: {
+    type: String,
+    default: 'invited'
+  },
   registrationDate: {
     type: Date,
     required: true,
