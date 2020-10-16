@@ -6,6 +6,8 @@ const Joi = require("@hapi/joi");
 const User = require("../models/User");
 const auth = require("./verifyToken");
 const logger = require("../utils/logger");
+const cryptoRandomString = require("crypto-random-string");
+const mailer = require("../utils/mailer");
 
 /**
  * Sets password for user with registrationKey
@@ -66,7 +68,7 @@ router.post("/setpass", async (req, res) => {
     res.send({ success: "Passwort successfully set" });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
-    res.status(500).send({errorCode: 5001, message: error});
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 });
 
@@ -112,23 +114,39 @@ router.post("/register", async (req, res) => {
     });
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(req.body.password, salt);
-
+  const randString = cryptoRandomString({ length: 30 });
   const user = new User({
     name: req.body.name,
     username: req.body.username,
-    password: hashedPassword,
     role: "admin",
     organization: req.body.organization,
+    registrationKey: randString,
   });
   try {
     const savedUser = await user.save();
     logger.debug(JSON.stringify(savedUser));
-    res.send({ success: "User is registered.", id: user._id });
+
+    mailer(
+      req.body.username,
+      "<p>Sehr geehrter Nutzer,</p><br>" +
+      `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘Timesbook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
+      `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+      "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+      "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+      "Timesbook")
+      .then(() => {
+        logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
+        res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was invited` });
+      })
+      .catch((err) => {
+        logger.error("Error while sending e-mail: " + err);
+        res
+          .status(500)
+          .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+      });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
-    res.status(500).send({errorCode: 5001, message: error});
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 });
 
