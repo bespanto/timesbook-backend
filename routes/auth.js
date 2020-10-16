@@ -27,7 +27,7 @@ router.post("/setpass", async (req, res) => {
     );
     return res
       .status(400)
-      .send({ errorCode: 4003, message: "Reset password is failed" });
+      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered" });
   } else if (userExists.registrationKey === "matched") {
     logger.error(`The Password for user ${req.body.username} is already set`);
     return res
@@ -114,36 +114,41 @@ router.post("/register", async (req, res) => {
     });
   }
 
+  // send confirmation e-mail
   const randString = cryptoRandomString({ length: 30 });
-  const user = new User({
-    name: req.body.name,
-    username: req.body.username,
-    role: "admin",
-    organization: req.body.organization,
-    registrationKey: randString,
-  });
-  try {
-    const savedUser = await user.save();
-    logger.debug(JSON.stringify(savedUser));
+  mailer(
+    req.body.username,
+    "<p>Sehr geehrter Nutzer,</p><br>" +
+    `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘Timesbook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
+    `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+    "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+    "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+    "Timesbook")
+    .then(() => {
+      logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
+    })
+    .catch((err) => {
+      logger.error("Error while sending e-mail: " + err);
+      res
+        .status(500)
+        .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+    });
 
-    mailer(
-      req.body.username,
-      "<p>Sehr geehrter Nutzer,</p><br>" +
-      `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘Timesbook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-      `<p><a href="http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/resetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
-      "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-      "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
-      "Timesbook")
-      .then(() => {
-        logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
-        res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was invited` });
-      })
-      .catch((err) => {
-        logger.error("Error while sending e-mail: " + err);
-        res
-          .status(500)
-          .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
-      });
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    const user = new User({
+      name: req.body.name,
+      username: req.body.username,
+      password: hashedPassword,
+      role: "admin",
+      organization: req.body.organization,
+      registrationKey: randString,
+    });
+
+      const savedUser = await user.save();
+      logger.debug(JSON.stringify(savedUser));
+      res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was registered` });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
     res.status(500).send({ errorCode: 5001, message: error });
