@@ -9,9 +9,69 @@ const logger = require("../utils/logger");
 const cryptoRandomString = require("crypto-random-string");
 const mailer = require("../utils/mailer");
 
-
 /**
  * Sets password for user with registrationKey
+ *
+ */
+router.post("/recoverPass", async (req, res) => {
+  logger.info(
+    "POST request on endpoint '/auth/recoverPass'. Body: " + JSON.stringify(req.body)
+  );
+
+  const userExists = await User.findOne({
+    username: req.body.username,
+  });
+  if (!userExists) {
+    logger.error(
+      `Username: ${req.body.username} is not registered`
+    );
+    return res.status(400)
+      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered" });
+  } else {
+
+    const randString = cryptoRandomString({ length: 30 });
+    try {
+      const update = await User.updateOne(
+        {
+          username: req.body.username,
+        },
+        {
+          $set: {
+            status: "pass recovery",
+            registrationKey: randString,
+          },
+        }
+      );
+    }
+    catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
+
+    mailer(
+      req.body.username,
+      "<p>Sehr geehrter Nutzer,</p><br>" +
+      `<p>Zum Setzen eines neuen Passwortes für Ihr Benutzerkonto folgen Sie bitte diesem Link:</p><br/>` +
+      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+      "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+      "Timesbook")
+      .then(() => {
+        logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
+      })
+      .catch((err) => {
+        logger.error("Error while sending e-mail: " + err);
+        res
+          .status(500)
+          .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+      });
+      logger.info("Pass recovery process was started for: " + req.body.username );
+      res.send({ success: "Pass recovery process was started for: " + req.body.username });
+  }
+
+});
+
+/**
+ * Confirms admin user account
  *
  */
 router.patch("/confirmation", async (req, res) => {
