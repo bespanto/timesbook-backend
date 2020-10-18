@@ -11,7 +11,6 @@ function verify(req, res, next) {
 
   try {
     req.decodedToken = jwt.verify(token, process.env.TOKEN_SECRET);
-    logger.debug("Decoded JWT: " + JSON.stringify(req.decodedToken));
     next();
   } catch (error) {
     res.status(401).send({ errorCode: 4008, message: "JWT cannot be verified" });

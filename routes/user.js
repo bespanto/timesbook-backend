@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const validate = require("validate.js");
 const Joi = require("@hapi/joi");
 const router = express.Router();
 const User = require("../models/User");
@@ -8,6 +9,60 @@ const auth = require("./verifyToken");
 const cryptoRandomString = require("crypto-random-string");
 const logger = require("../utils/logger");
 const mailer = require("../utils/mailer");
+
+
+
+/**
+ * Invites user via e-mail
+ *
+ */
+router.patch("/changePass/:username", auth, async (req, res) => {
+  logger.info("PATCH request on endpoint '/cahngePass'. Body: " + JSON.stringify(req.body));
+
+  // check body
+  var constraints = {
+    password: {
+      presence: true,
+      length: {
+        minimum: 6,
+      },
+    },
+  };
+  const result = validate({ password: req.body.password }, constraints);
+  if (result !== undefined) {
+    if (result.pass)
+      res.status(400).send("The password must be at least six characters long");
+  } else {
+    try {
+      //check user in db
+      const user = await User.findById(req.decodedToken._id);
+      if (!user) {
+        logger.error({ error: "No user found for the given id" });
+        return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
+      } else {
+        if (user.username === req.params.username){
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(req.body.password, salt);
+          const update = await User.updateOne(
+            { username: req.params.username },
+            {
+              $set: {
+                password: hashedPassword,
+              },
+            }
+          );
+          res.status(200).send({ success: `The password for user ${user.username} was successfully changed` });
+        }
+        else
+          res.status(403).send({ errorCode: 403, message: "No permissions to change password for another user." });
+      }
+    } catch (error) {
+      logger.error(error);
+      res.status(500).send({ errorCode: 500, message: "Internal server error"});
+    }
+  }
+  // 3. set Pass
+});
 
 
 /**
@@ -96,7 +151,7 @@ router.patch("/:username", auth, async (req, res) => {
         },
       }
     );
-    res.status(200).send({success: "User updated"});
+    res.status(200).send({ success: "User updated" });
   } catch (error) {
     logger.error("Error while accessing Database:" + error);
     res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
