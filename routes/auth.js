@@ -10,7 +10,7 @@ const cryptoRandomString = require("crypto-random-string");
 const mailer = require("../utils/mailer");
 
 /**
- * Sets password for user with registrationKey
+ * Recovers the password for a user by sending an e-mail with registrationKey
  *
  */
 router.post("/recoverPass", async (req, res) => {
@@ -74,9 +74,9 @@ router.post("/recoverPass", async (req, res) => {
  * Confirms admin user account
  *
  */
-router.patch("/confirmation", async (req, res) => {
+router.patch("/confirmAdminAccount", async (req, res) => {
   logger.info(
-    "POST request on endpoint '/auth/confirmation'. Body: " + JSON.stringify(req.body)
+    "POST request on endpoint '/auth/confirmAdminAccount'. Body: " + JSON.stringify(req.body)
   );
 
   const accountMatched = await User.findOne({
@@ -110,7 +110,7 @@ router.patch("/confirmation", async (req, res) => {
         },
         {
           $set: {
-            status: "confirmed",
+            status: "active",
             registrationKey: "matched",
           },
         }
@@ -130,9 +130,9 @@ router.patch("/confirmation", async (req, res) => {
  * Sets password for user with registrationKey
  *
  */
-router.post("/setpass", async (req, res) => {
+router.post("/setPass", async (req, res) => {
   logger.info(
-    "POST request on endpoint '/auth/setpass'. Body: " + JSON.stringify(req.body)
+    "POST request on endpoint '/auth/setPass'. Body: " + JSON.stringify(req.body)
   );
 
   const userExists = await User.findOne({
@@ -176,6 +176,7 @@ router.post("/setpass", async (req, res) => {
         $set: {
           password: hashedPassword,
           registrationKey: "matched",
+          status: "active"
         },
       }
     );

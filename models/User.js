@@ -32,7 +32,6 @@ const UserSchema = mongoose.Schema({
   },
   status: {
     type: String,
-    default: 'invited'
   },
   registrationDate: {
     type: Date,
