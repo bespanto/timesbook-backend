@@ -34,6 +34,8 @@ No user found for the given id.
 ### 4010
 User have no permissions for this operation.
 
+### 4011
+Account ist not confirmed.
 
 #
 ## 500 codes

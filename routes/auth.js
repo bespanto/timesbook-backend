@@ -64,8 +64,8 @@ router.post("/recoverPass", async (req, res) => {
           .status(500)
           .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
       });
-      logger.info("Pass recovery process was started for: " + req.body.username );
-      res.send({ success: "Pass recovery process was started for: " + req.body.username });
+    logger.info("Pass recovery process was started for: " + req.body.username);
+    res.send({ success: "Pass recovery process was started for: " + req.body.username });
   }
 
 });
@@ -295,6 +295,15 @@ router.post("/login", async (req, res) => {
           req.body.username,
       });
   }
+
+  if (user.registrationKey !== 'matched')
+    return res
+      .status(400)
+      .send({
+        errorCode: 4011,
+        error:
+          "Account ist not confirmed."
+      });
 
   const validPass = await bcrypt.compare(req.body.password, user.password);
   if (!validPass) {
