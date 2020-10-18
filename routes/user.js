@@ -17,7 +17,7 @@ const mailer = require("../utils/mailer");
  *
  */
 router.patch("/changePass/:username", auth, async (req, res) => {
-  logger.info("PATCH request on endpoint '/cahngePass'. Body: " + JSON.stringify(req.body));
+  logger.info("PATCH request on endpoint '/cahngePass'.");
 
   // check body
   var constraints = {
