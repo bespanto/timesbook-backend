@@ -37,7 +37,6 @@ router.post("/recoverPass", async (req, res) => {
         },
         {
           $set: {
-            status: "pass recovery",
             registrationKey: randString,
           },
         }
@@ -110,7 +109,6 @@ router.patch("/confirmAdminAccount", async (req, res) => {
         },
         {
           $set: {
-            status: "active",
             registrationKey: "matched",
           },
         }
@@ -176,7 +174,6 @@ router.post("/setPass", async (req, res) => {
         $set: {
           password: hashedPassword,
           registrationKey: "matched",
-          status: "active"
         },
       }
     );
