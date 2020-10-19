@@ -5,6 +5,7 @@ const validate = require("validate.js");
 const Joi = require("@hapi/joi");
 const router = express.Router();
 const User = require("../models/User");
+const BookingEntry = require("../models/BookingEntry");
 const auth = require("./verifyToken");
 const cryptoRandomString = require("crypto-random-string");
 const logger = require("../utils/logger");
@@ -130,6 +131,26 @@ router.patch("/invite", auth, async (req, res) => {
   }
 });
 
+
+/**
+ * Delete user and his booking etries
+ *
+ */
+router.delete("/:username", auth, async (req, res) => {
+  logger.info(
+    "DELETE request on endpoint '/:username'. Username: " + req.params.username);
+
+  try {
+    await User.deleteOne({ username: req.params.username });
+    await BookingEntry.deleteMany({ username: req.params.username });
+    res.status(200).send({ success: "User deleted" });
+  } catch (error) {
+    logger.error("Error while accessing Database:" + error);
+    res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
+  }
+});
+
+
 /**
  * Updates user profile
  *
@@ -173,7 +194,7 @@ router.get("/", auth, async (req, res) => {
       return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
     } else {
       if (user.role === "admin") {
-        const users = await User.find({ organization: user.organization }, { password: 0, _id: 0, registrationKey: 0 });
+        const users = await User.find( {$and: [ {organization: user.organization} , {username: {$ne: user.username} } ]}, { password: 0, _id: 0, registrationKey: 0 });
         res.status(200).send(users);
       } else {
         logger.error("User have no permissions to retrieve other user profiles");
