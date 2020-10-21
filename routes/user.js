@@ -41,7 +41,7 @@ router.patch("/changePass/:username", auth, async (req, res) => {
         logger.error({ error: "No user found for the given id" });
         return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
       } else {
-        if (user.username === req.params.username){
+        if (user.username === req.params.username) {
           const salt = await bcrypt.genSalt(10);
           const hashedPassword = await bcrypt.hash(req.body.password, salt);
           const update = await User.updateOne(
@@ -59,7 +59,7 @@ router.patch("/changePass/:username", auth, async (req, res) => {
       }
     } catch (error) {
       logger.error(error);
-      res.status(500).send({ errorCode: 500, message: "Internal server error"});
+      res.status(500).send({ errorCode: 500, message: "Internal server error" });
     }
   }
   // 3. set Pass
@@ -81,24 +81,8 @@ router.patch("/invite", auth, async (req, res) => {
       logger.error({ error: "No user found for the given id" });
       return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
     } else {
-      if (
-        user.role === "admin" &&
-        user.organization === req.body.organization
-      ) {
-        const randString = cryptoRandomString({ length: 30 });
-        const update = await User.updateOne(
-          { username: req.body.username },
-          {
-            $set: {
-              username: req.body.username,
-              name: req.body.name,
-              role: "user",
-              organization: req.body.organization,
-              registrationKey: randString,
-            },
-          },
-          { upsert: true }
-        );
+      const randString = cryptoRandomString({ length: 30 });
+      if (user.role === "admin" && user.organization === req.body.organization) {
         mailer(
           req.body.username,
           "<p>Sehr geehrter Nutzer,</p><br>" +
@@ -108,21 +92,35 @@ router.patch("/invite", auth, async (req, res) => {
           "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
           "Timesbook")
           .then((response) => {
-            logger.info("User '" + req.body.username + "' was invited");
-            res.send({ success: `User ${req.body.username} was invited` });
+            console.log(response);
+            try {
+              User.updateOne(
+                { username: req.body.username },
+                {
+                  $set: {
+                    username: req.body.username,
+                    name: req.body.name,
+                    role: "user",
+                    organization: req.body.organization,
+                    registrationKey: randString,
+                  },
+                },
+                { upsert: true }
+              );
+              logger.info("User '" + req.body.username + "' was invited");
+              res.status(200).send({ success: `User ${req.body.username} was invited` });
+            } catch (error) {
+              logger.error("Error while accessing Database: " + error);
+              res.status(500).send({ errorCode: 5001, message: error });
+            }
           })
           .catch((err) => {
             logger.error("Error while sending e-mail: " + err);
-            res
-              .status(500)
-              .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+            res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
           });
-
       } else {
         logger.error("User have no permissions to invite other users");
-        return res
-          .status(403)
-          .send({ errorCode: 4010, message: "User have no permissions to invite other users" });
+        return res.status(403).send({ errorCode: 4010, message: "User have no permissions to invite other users" });
       }
     }
   } catch (error) {
@@ -194,7 +192,7 @@ router.get("/", auth, async (req, res) => {
       return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
     } else {
       if (user.role === "admin") {
-        const users = await User.find( {$and: [ {organization: user.organization} , {username: {$ne: user.username} } ]}, { password: 0, _id: 0, registrationKey: 0 });
+        const users = await User.find({ $and: [{ organization: user.organization }, { username: { $ne: user.username } }] }, { password: 0, _id: 0, registrationKey: 0 });
         res.status(200).send(users);
       } else {
         logger.error("User have no permissions to retrieve other user profiles");

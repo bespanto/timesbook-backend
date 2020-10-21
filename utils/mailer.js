@@ -42,11 +42,7 @@ async function sendMail(recipient, mailBody) {
     refresh_token: MAILING_SERVICE_REFRESH_TOKEN,
   });
   const accessToken = oauth2Client.getAccessToken()
-    .catch(err => {
-      logger.error(JSON.stringify(err.response));
-    });
-
-    console.log('accessToken:' + accessToken);
+    .catch(() => {});
 
   transporter = nodemailer.createTransport({
     service: "gmail",
