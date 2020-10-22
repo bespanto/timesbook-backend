@@ -8,10 +8,16 @@ const auth = require("./verifyToken");
 const logger = require("../utils/logger");
 const mailer = require("../utils/mailer");
 
+/**
+ *  Gets all vacation entries by user from jwt
+ */
+router.get("/", auth, async (req, res) => {
+  logger.info("POST request on endpoint '/vacation/:username'. Username: " + req.params.username + " Body: " + req.body);
+});
 
 
 /**
- * Create a vacation antry for an user
+ * Create a vacation entry for an user
  *
  */
 router.post("/:username", auth, async (req, res) => {
@@ -59,25 +65,26 @@ router.post("/:username", auth, async (req, res) => {
       res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
     }
     else {
-
-      const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
-      if (!user)
-        return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
-
-      const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
-
-      const vacationEntry = new Vacation({
-        username: req.params.username,
-        from: req.body.from,
-        till: req.body.till,
-        status: "pending"
-      });
       try {
+        const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
+        if (!user)
+          return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
+        else
+          if(user.username !== req.params.username)
+            return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
+
+        const vacationEntry = new Vacation({
+          username: req.params.username,
+          from: req.body.from,
+          till: req.body.till,
+          status: "pending"
+        });
         const savedVacationEntry = await vacationEntry.save();
         logger.debug("The vacation was sucessfully added: " + JSON.stringify(savedVacationEntry));
 
+        const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
         mailer(
-          req.body.username,
+          req.params.username,
           "<p>Sehr geehrter Admin,</p><br>" +
           `<p>Sie haben in Ihrer Organisation (${req.body.organization}) eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten.</p>` +
           `<p>Um die Anfrage zu bearbeiten loggen Sie sich bei Timesbook ein:</p><br/>` +
