@@ -12,7 +12,22 @@ const mailer = require("../utils/mailer");
  *  Gets all vacation entries by user from jwt
  */
 router.get("/", auth, async (req, res) => {
-  logger.info("POST request on endpoint '/vacation/:username'. Username: " + req.params.username + " Body: " + req.body);
+  logger.info("GET request on endpoint '/vacation/'");
+
+  const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
+  if (!user)
+    return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
+  else {
+    try {
+      const vacations = await Vacation.find({ username: user.username });
+      logger.debug(vacations);
+      res.status(200).send({success: {vacations}});
+    } catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
+  }
+
 });
 
 
@@ -46,7 +61,6 @@ router.post("/:username", auth, async (req, res) => {
     },
   };
 
-
   const result = validate(req.body, constraints);
   if (result !== undefined) {
     res.status(400).send({ errorCode: 4014, message: "The body has required fields: 'from', 'till'" })
@@ -70,7 +84,7 @@ router.post("/:username", auth, async (req, res) => {
         if (!user)
           return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
         else
-          if(user.username !== req.params.username)
+          if (user.username !== req.params.username)
             return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
 
         const vacationEntry = new Vacation({
