@@ -37,6 +37,11 @@ User have no permissions for this operation.
 ### 4011
 Account ist not confirmed.
 
+### 4012
+The input contains not valid date.
+
+### 4013
+'from' can not be later as 'till'
 #
 ## 500 codes
 #

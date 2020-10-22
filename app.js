@@ -7,6 +7,7 @@ require('dotenv/config');
 const bookingEntriesRoute = require('./routes/bookingEntries')
 const authRoute = require('./routes/auth')
 const userRoute = require('./routes/user')
+const vacationsRoute = require('./routes/vacations')
 
 
 //Middleware
@@ -15,6 +16,7 @@ app.use(bodyParser.json());
 app.use('/api/bookingEntries', bookingEntriesRoute);
 app.use('/api/user', userRoute);
 app.use('/api/auth', authRoute);
+app.use('/api/vacation', vacationsRoute);
 
 app.get('/', (req, res) => {
     res.send('We are on home');
