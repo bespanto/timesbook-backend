@@ -99,12 +99,13 @@ router.post("/:username", auth, async (req, res) => {
         const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
         mailer(
           req.params.username,
+          "Urlaubsanfrage",
           "<p>Sehr geehrter Admin,</p><br>" +
-          `<p>Sie haben in Ihrer Organisation (${req.body.organization}) eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten.</p>` +
-          `<p>Um die Anfrage zu bearbeiten loggen Sie sich bei Timesbook ein:</p><br/>` +
+          `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten.</p>` +
+          `<p>Um die Anfrage zu bearbeiten loggen Sie sich bei TimesBook ein:</p><br/>` +
           `<p><a href="http://localhost:3000/Login">http://localhost:3000/Login</a></p><br/>` +
-          "<p>Timesbook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-          "Timesbook")
+          "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+          "TimesBook")
           .then(() => {
             logger.info("E-mail with the vacation request for '" + req.params.username + "' was send to admin: '" + admin.username + "'");
             res.status(200).send({ success: "The vacation was sucessfully added" });
