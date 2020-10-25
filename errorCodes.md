@@ -42,6 +42,13 @@ The input contains not valid date.
 
 ### 4013
 'from' can not be later as 'till'
+
+### 4014
+Missing required request input(s)
+
+### 4015
+Overlapping of the periods
+
 #
 ## 500 codes
 #

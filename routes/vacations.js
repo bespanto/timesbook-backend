@@ -22,7 +22,7 @@ router.delete("/:id", auth, async (req, res) => {
 
     try {
       const vacations = await Vacation.deleteOne({ username: user.username, _id: req.params.id });
-      res.status(200).send({success: "Vacation was successfuly deleted"});
+      res.status(200).send({ success: "Vacation was successfuly deleted" });
     } catch (error) {
       logger.error("Error while accessing Database: " + error);
       res.status(500).send({ errorCode: 5001, message: error });
@@ -44,7 +44,7 @@ router.get("/", auth, async (req, res) => {
     try {
       const vacations = await Vacation.find({ username: user.username });
       logger.debug(vacations);
-      res.status(200).send({success: {vacations}});
+      res.status(200).send({ success: { vacations } });
     } catch (error) {
       logger.error("Error while accessing Database: " + error);
       res.status(500).send({ errorCode: 5001, message: error });
@@ -92,11 +92,10 @@ router.post("/:username", auth, async (req, res) => {
     !moment(req.body.till, moment.ISO_8601).isValid()) {
     logger.error("'from' and 'till' must be valid dates")
     res.status(400).send({ errorCode: 4012, message: "The input contains not valid date" })
-    // res.status(400).send("The password must be at least six characters long");
   } else {
 
-    const start = moment(req.body.from, moment.ISO_8601);
-    const end = moment(req.body.till, moment.ISO_8601);
+    const start = moment.utc(req.body.from);
+    const end = moment.utc(req.body.till);
     if (start.isAfter(end)) {
       logger.error("'from' can not be later as 'till'")
       res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
@@ -109,34 +108,51 @@ router.post("/:username", auth, async (req, res) => {
         else
           if (user.username !== req.params.username)
             return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
+          else {
+            const vacations = await Vacation.find({ username: user.username });
+            let periodOverlap = false;
+            for (let i = 0; i < vacations.length; i++) {
+              const element = vacations[i];
+              const vacFrom  = moment.utc(element.from);
+              const vacTill  = moment.utc(element.till);
+              if (moment(start).isBetween(vacFrom, vacTill, undefined, '[]') ||
+                moment(end).isBetween(vacFrom, vacTill, undefined, '[]')) {
+                periodOverlap = true;
+                break;
+              }
+            }
+            if (periodOverlap)
+              return res.status(400).send({ errorCode: 4015, message: "Overlapping of the periods" });
+            else {
+              const vacationEntry = new Vacation({
+                username: req.params.username,
+                from: req.body.from,
+                till: req.body.till,
+                status: "pending"
+              });
+              const savedVacationEntry = await vacationEntry.save();
+              logger.debug("The vacation was sucessfully added: " + JSON.stringify(savedVacationEntry));
 
-        const vacationEntry = new Vacation({
-          username: req.params.username,
-          from: req.body.from,
-          till: req.body.till,
-          status: "pending"
-        });
-        const savedVacationEntry = await vacationEntry.save();
-        logger.debug("The vacation was sucessfully added: " + JSON.stringify(savedVacationEntry));
-
-        const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
-        mailer(
-          req.params.username,
-          "Urlaubsanfrage",
-          "<p>Sehr geehrter Admin,</p><br>" +
-          `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten. ` +
-          `Sie können die Anfrage im Menü-Punkt 'Urlaubsanträge' bearbeiten.` +
-          `<p><a href="http://localhost:3000/VacationRequests">http://localhost:3000/VacationRequests</a></p><br/>` +
-          "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-          "TimesBook")
-          .then(() => {
-            logger.info("E-mail with the vacation request for '" + req.params.username + "' was send to admin: '" + admin.username + "'");
-            res.status(200).send({ success: "The vacation was sucessfully added" });
-          })
-          .catch((err) => {
-            logger.error("Error while sending e-mail: " + err);
-            res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
-          });
+              const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
+              mailer(
+                req.params.username,
+                "Urlaubsanfrage",
+                "<p>Sehr geehrter Admin,</p><br>" +
+                `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten. ` +
+                `Sie können die Anfrage im Menü-Punkt 'Urlaubsanträge' bearbeiten.` +
+                `<p><a href="http://localhost:3000/VacationRequests">http://localhost:3000/VacationRequests</a></p><br/>` +
+                "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+                "TimesBook")
+                .then(() => {
+                  logger.info("E-mail with the vacation request for '" + req.params.username + "' was send to admin: '" + admin.username + "'");
+                  res.status(200).send({ success: "The vacation was sucessfully added" });
+                })
+                .catch((err) => {
+                  logger.error("Error while sending e-mail: " + err);
+                  res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+                });
+            }
+          }
       } catch (error) {
         logger.error("Error while accessing Database: " + error);
         res.status(500).send({ errorCode: 5001, message: error });
