@@ -189,10 +189,10 @@ router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
       ],
     });
     logger.debug(JSON.stringify(bookingEntries));
-    res.json(bookingEntries);
+    res.status(200).send({ success: { bookingEntries } });
   } catch (error) {
-    logger.error(error);
-    res.json({ message: error });
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 });
 
