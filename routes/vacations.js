@@ -8,6 +8,29 @@ const auth = require("./verifyToken");
 const logger = require("../utils/logger");
 const mailer = require("../utils/mailer");
 
+
+/**
+ *  Delets a specific vacation
+ */
+router.delete("/:id", auth, async (req, res) => {
+  logger.info("DELETE request on endpoint '/vacation/'. Id: " + req.params.id);
+
+  const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
+  if (!user)
+    return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
+  else {
+
+    try {
+      const vacations = await Vacation.deleteOne({ username: user.username, _id: req.params.id });
+      res.status(200).send({success: "Vacation was successfuly deleted"});
+    } catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
+  }
+
+});
+
 /**
  *  Gets all vacation entries by user from jwt
  */
@@ -101,9 +124,9 @@ router.post("/:username", auth, async (req, res) => {
           req.params.username,
           "Urlaubsanfrage",
           "<p>Sehr geehrter Admin,</p><br>" +
-          `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten.</p>` +
-          `<p>Um die Anfrage zu bearbeiten loggen Sie sich bei TimesBook ein:</p><br/>` +
-          `<p><a href="http://localhost:3000/Login">http://localhost:3000/Login</a></p><br/>` +
+          `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten. ` +
+          `Sie können die Anfrage im Menü-Punkt 'Urlaubsanträge' bearbeiten.` +
+          `<p><a href="http://localhost:3000/VacationRequests">http://localhost:3000/VacationRequests</a></p><br/>` +
           "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
           "TimesBook")
           .then(() => {
