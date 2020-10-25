@@ -234,7 +234,7 @@ router.post("/register", async (req, res) => {
   const randString = cryptoRandomString({ length: 30 });
   mailer(
     req.body.username,
-    "Anmeldung in TimesBook abschließen",
+    "Registrierung in TimesBook abschließen",
     "<p>Sehr geehrter Nutzer,</p><br>" +
     `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
     `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
