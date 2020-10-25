@@ -151,7 +151,7 @@ router.delete("/:username", auth, async (req, res) => {
 
 
 /**
- * Updates user profile
+ * Updates the user profile
  *
  */
 router.patch("/:username", auth, async (req, res) => {
@@ -160,22 +160,50 @@ router.patch("/:username", auth, async (req, res) => {
     "; body: " + JSON.stringify(req.body)
   );
 
-  try {
-    const update = await User.updateOne(
-      { username: req.params.username },
-      {
-        $set: {
-          role: req.body.role,
-          name: req.body.name,
-          organization: req.body.organization,
-        },
-      }
-    );
-    res.status(200).send({ success: "User updated" });
-  } catch (error) {
-    logger.error("Error while accessing Database:" + error);
-    res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
+  // update the name
+  if (req.body.name) {
+    try {
+      const update = await User.updateOne(
+        { username: req.params.username },
+        {
+          $set: {
+            name: req.body.name,
+          },
+        }
+      );
+    } catch (error) {
+      logger.error("Error while accessing Database:" + error);
+      res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
+    }
   }
+
+  if (req.body.organization) {
+
+    try {
+      const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
+      logger.debug(JSON.stringify(user));
+      if (!user) {
+        logger.error({ error: "No user found for the given id" });
+        return res.status(401).send({ errorCode: 4009, message: "No user found for the given id" });
+      } else {
+        if (user.role === 'admin' && user.organization != req.body.organization) {
+          await User.updateMany(
+            { organization: user.organization },
+            {
+              $set: {
+                organization: req.body.organization,
+              },
+            }
+          );
+        }
+      }
+    } catch (error) {
+      logger.error("Error while accessing Database:" + error);
+      res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
+    }
+
+  }
+  res.status(200).send({ success: "User(s) updated" });
 });
 
 /**

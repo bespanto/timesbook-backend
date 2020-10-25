@@ -49,6 +49,12 @@ Missing required request input(s)
 ### 4015
 Overlapping of the periods
 
+### 4016
+The name must be at least one character long
+
+### 4017
+The organization must be at least one character long
+
 #
 ## 500 codes
 #
