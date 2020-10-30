@@ -55,6 +55,9 @@ The name must be at least one character long
 ### 4017
 The organization must be at least one character long
 
+### 4018
+The user already exists
+
 #
 ## 500 codes
 #
@@ -63,4 +66,4 @@ The organization must be at least one character long
 Error while accessing Database
 
 ### 5002
-No user found for the given id.
+Error while sending e-mail.

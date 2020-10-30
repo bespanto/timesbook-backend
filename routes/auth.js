@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Joi = require("@hapi/joi");
+const validate = require("validate.js");
 const User = require("../models/User");
 const auth = require("./verifyToken");
 const logger = require("../utils/logger");
 const cryptoRandomString = require("crypto-random-string");
 const mailer = require("../utils/mailer");
+
 
 /**
  * Recovers the password for a user by sending an e-mail with registrationKey
@@ -70,6 +71,7 @@ router.post("/recoverPass", async (req, res) => {
 
 });
 
+
 /**
  * Confirms admin user account
  *
@@ -125,8 +127,9 @@ router.patch("/confirmAdminAccount", async (req, res) => {
 
 });
 
+
 /**
- * Sets password for user with registrationKey
+ * Sets password for the registered user
  *
  */
 router.post("/setPass", async (req, res) => {
@@ -187,6 +190,7 @@ router.post("/setPass", async (req, res) => {
     res.status(500).send({ errorCode: 5001, message: error });
   }
 });
+
 
 /**
  * Registers a user with role 'admin'
@@ -272,6 +276,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
+
 /**
  * User login. Response jwt.
  *
@@ -322,6 +327,102 @@ router.post("/login", async (req, res) => {
     expiresIn: 86400,
   });
   res.header("auth-token", token).send({ jwt: token });
+});
+
+
+/**
+ * Invites user via e-mail
+ *
+ */
+router.post("/invite", auth, async (req, res) => {
+  logger.info(
+    "POST request on endpoint '/invite'. Body: " + JSON.stringify(req.body)
+  );
+
+  const randString = cryptoRandomString({ length: 30 });
+  if (req.requestingUser.role === "admin") {
+    mailer(
+      req.body.username,
+      "Einladung von TimesBook ",
+      "<p>Sehr geehrter Nutzer,</p><br>" +
+      `<p>Sie sind vom Verwalter Ihrer Organisation (${req.requestingUser.role}) zur Nutzung von ‘TimesBook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
+      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+      "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+      "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+      "TimesBook")
+      .then(async (response) => {
+        try {
+          const newUser = new User({
+            username: req.body.username,
+            name: req.body.name,
+            role: "user",
+            organization: req.requestingUser.organization,
+            registrationKey: randString,
+
+          });
+          const savedUser = await newUser.save();
+          logger.info("User '" + req.body.username + "' was invited");
+          res.status(200).send({ success: `User ${req.body.username} was invited` });
+        } catch (error) {
+          if (error.code === 11000) {
+            logger.error("The user already exists: " + req.body.username);
+            res.status(400).send({ errorCode: 4018, message: "The user already exists: " + req.body.username });
+          }
+          else {
+            logger.error("Error while accessing the database: " + error);
+            res.status(500).send({ errorCode: 5001, message: error });
+          }
+        }
+      })
+      .catch((err) => {
+        logger.error("Error while sending e-mail: " + err);
+        res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+      });
+  } else {
+    logger.error("User have no permissions to invite other users");
+    return res.status(403).send({ errorCode: 4010, message: "User have no permissions to invite other users" });
+  }
+});
+
+
+/**
+ * Change the pass for a user
+ *
+ */
+router.patch("/changePass/", auth, async (req, res) => {
+  logger.info("PATCH request on endpoint '/cahngePass'.");
+
+  // check body
+  var constraints = {
+    password: {
+      presence: true,
+      length: {
+        minimum: 6,
+      },
+    },
+  };
+  const result = validate({ password: req.body.password }, constraints);
+  if (result !== undefined) {
+    if (result.pass)
+      res.status(400).send("The password must be at least six characters long");
+  } else {
+    try {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(req.body.password, salt);
+      const update = await User.updateOne(
+        { username: req.requestingUser.username },
+        {
+          $set: {
+            password: hashedPassword,
+          },
+        }
+      );
+      res.status(200).send({ success: `The password for user ${req.requestingUser.username} was successfully changed` });
+    } catch (error) {
+      logger.error(error);
+      res.status(500).send({ errorCode: 500, message: "Internal server error" });
+    }
+  }
 });
 
 module.exports = router;
