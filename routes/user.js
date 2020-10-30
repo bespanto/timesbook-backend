@@ -235,27 +235,55 @@ router.get("/", auth, async (req, res) => {
 
 });
 
+
 /**
- * Gets user profile
+ * Gets user profile by JWT
  *
  */
 router.get("/profile", auth, async (req, res) => {
   logger.info("GET request on endpoint '/user/profile'");
 
+    logger.info("Requested user: " + req.requestingUser);
+    res.status(200).send({ success: { user: req.requestingUser} });
+
+});
+
+
+/**
+ * Gets user profile
+ *
+ */
+router.get("/:username", auth, async (req, res) => {
+  logger.info("GET request on endpoint '/user/:username'");
+
   try {
-    const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0, registrationKey: 0 });
-    logger.debug(JSON.stringify(user));
-    if (!user) {
-      logger.error("No user found for the given id");
-      return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
-    }
-    res.status(200).send(user);
+    let resObj;
+    if (req.requestingUser.username === req.params.username)
+      resObj = req.requestingUser;
+    else
+      if (req.requestingUser.role === 'admin') {
+        const requestedUser = await User.findOne(
+          { username: req.params.username, organization: req.requestingUser.organization },
+          { password: 0, _id: 0, registrationKey: 0 });
+        if (!requestedUser) {
+          logger.error("User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'");
+          return res.status(400).send({ errorCode: 4009, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
+        }
+        else
+          resObj = requestedUser;
+      }
+      else {
+        logger.error("No permissions to retrieve user info.");
+        return res.status(403).send({ errorCode: 4010, message: "No permissions to retrieve user info." });
+      }
+
+    logger.info("Requested user: " + resObj);
+    res.status(200).send({ success: { user: resObj } });
+
   } catch (error) {
-    logger.error("Error while accessing Database: " + error)
-    res.status(500).send({ errorCode: 5001, message: "Error while accessing Database" });
+    logger.error("Error while accessing the database: " + error)
+    res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
   }
-
-
 });
 
 module.exports = router;
