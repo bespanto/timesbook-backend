@@ -86,11 +86,8 @@ router.patch("/confirmAdminAccount", async (req, res) => {
     registrationKey: 'matched',
   });
   if (accountMatched) {
-    logger.error(
-      `Account ${req.body.username} was already confirmed`
-    );
-    return res.status(200)
-      .send({ success: "Account " + req.body.username + "' was already confirmed." });
+    logger.error(`Account ${req.body.username} was already confirmed`);
+    return res.status(200).send({ success: "Account " + req.body.username + "' was already confirmed." });
   }
 
   const userExists = await User.findOne({
@@ -98,9 +95,7 @@ router.patch("/confirmAdminAccount", async (req, res) => {
     registrationKey: req.body.registrationKey,
   });
   if (!userExists) {
-    logger.error(
-      `Username: ${req.body.username} is not registered or registartion key is invalid`
-    );
+    logger.error(`Username: ${req.body.username} is not registered or registartion key is invalid`);
     return res.status(400)
       .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
   } else {
@@ -124,7 +119,6 @@ router.patch("/confirmAdminAccount", async (req, res) => {
       res.status(500).send({ errorCode: 5001, message: error });
     }
   }
-
 });
 
 
@@ -133,38 +127,24 @@ router.patch("/confirmAdminAccount", async (req, res) => {
  *
  */
 router.post("/setPass", async (req, res) => {
-  logger.info(
-    "POST request on endpoint '/auth/setPass'. Body: " + JSON.stringify(req.body)
-  );
+  logger.info("POST request on endpoint '/auth/setPass'. Body: " + JSON.stringify(req.body));
 
-  const userExists = await User.findOne({
-    username: req.body.username,
-    registrationKey: req.body.registrationKey,
-  });
-  if (!userExists) {
-    logger.error(
-      `Reset password is failed. Username: ${req.body.username} is not registered or registartion key is invalid`
-    );
-    return res.status(400)
-      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
-  } else if (userExists.registrationKey === "matched") {
-    logger.error(`The Password for user ${req.body.username} is already set`);
-    return res
-      .status(400)
-      .send({
-        errorCode: 4005,
-        message: `The Password for user ${req.body.username} is already set`,
-      });
-  } else if (userExists.registrationKey !== req.body.registrationKey) {
-    logger.error(`Bad registration key for user: ${req.body.username}`);
-    return res
-      .status(400)
-      .send({
-        errorCode: 4006,
-        message: `Bad registration key for user: ${req.body.username}`,
-      });
+  try {
+    const userExists = await User.findOne({ username: req.body.username, });
+    if (!userExists) {
+      logger.error("No user found for the given username (e-mail): " + req.body.username);
+      return res.status(400).send({ errorCode: 4003, message: "No user found for the given username (e-mail): " + req.body.username });
+    } else if (userExists.registrationKey === "matched") {
+      logger.error(`The Password for user ${req.body.username} is already set`);
+      return res.status(400).send({ errorCode: 4005, message: `The Password for user ${req.body.username} is already set`, });
+    } else if (userExists.registrationKey !== req.body.registrationKey) {
+      logger.error(`Bad registration key for user: ${req.body.username}`);
+      return res.status(400).send({ errorCode: 4006, message: `Bad registration key for user: ${req.body.username}` });
+    }
+  } catch (error) {
+    logger.error("Error while accessing the database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
   }
-
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
@@ -181,12 +161,10 @@ router.post("/setPass", async (req, res) => {
         },
       }
     );
-    logger.info(
-      JSON.stringify("Passwort successfully set for user: " + req.body.username)
-    );
-    res.send({ success: "Passwort successfully set" });
+    logger.info("Passwort successfully set for user: " + req.body.username);
+    res.status(200).send({ success: "Passwort successfully set" });
   } catch (error) {
-    logger.error("Error while accessing Database: " + error);
+    logger.error("Error while accessing zhe database: " + error);
     res.status(500).send({ errorCode: 5001, message: error });
   }
 });
@@ -204,23 +182,12 @@ router.post("/register", async (req, res) => {
   // check e-mail in DB
   const userExists = await User.findOne({ username: req.body.username });
   if (userExists) {
-    logger.error(
-      "The user cannot be registered. E-mail already exists: " +
-      req.body.username
-    );
-    return res.status(400).send({
-      errorCode: 4001,
-      message:
-        "The user cannot be registered. E-mail already exists: " +
-        req.body.username,
-    });
+    logger.error("The user cannot be registered. E-mail already exists: " + req.body.username);
+    return res.status(400).send({ errorCode: 4001, message: "The user cannot be registered. E-mail already exists: " + req.body.username, });
   }
 
   //check, if admin account for orga exists
-  const adminForOrgaExists = await User.findOne({
-    organization: req.body.organization,
-    role: "admin",
-  });
+  const adminForOrgaExists = await User.findOne({ organization: req.body.organization, role: "admin", });
   if (adminForOrgaExists) {
     logger.error(
       "The user cannot '" + req.body.username + "' be registered. The organization '" +
@@ -239,9 +206,9 @@ router.post("/register", async (req, res) => {
   mailer(
     req.body.username,
     "Registrierung in TimesBook abschließen",
-    "<p>Sehr geehrter Nutzer,</p><br>" +
-    `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung von ‘TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-    `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+    "<p>Sehr geehrter Nutzer,</p>" +
+    `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung des Zeiterfassunssystems 'TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p>` +
+    `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
     "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
     "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
     "TimesBook")
@@ -344,9 +311,9 @@ router.post("/invite", auth, async (req, res) => {
     mailer(
       req.body.username,
       "Einladung von TimesBook ",
-      "<p>Sehr geehrter Nutzer,</p><br>" +
-      `<p>Sie sind vom Verwalter Ihrer Organisation (${req.requestingUser.role}) zur Nutzung von ‘TimesBook’ eingeladen. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p><br/>` +
-      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+      "<p>Sehr geehrter Nutzer,</p>" +
+      `<p>Sie sind vom Verwalter Ihrer Organisation ${req.requestingUser.organization} zur Nutzung des Zeiterfassungssystems 'TimesBook' eingeladen. Damit Sie die App nutzen können, schließen Sie bitte Ihre Registrierung unter folgendem Link ab:</p>` +
+      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p>` +
       "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
       "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
       "TimesBook")

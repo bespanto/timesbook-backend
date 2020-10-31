@@ -11,7 +11,7 @@ Username (e-mail) already exists.
 Admin account for organization already exists.
 
 ### 4003
-Username (e-mail) is not registered or registartion key is invalid.
+No user found for the given username (e-mail)
 
 ### 4004
 Invalid password for user.
