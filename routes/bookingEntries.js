@@ -250,10 +250,10 @@ router.delete("/:username/:day", auth, async (req, res) => {
       day: day,
       username: req.params.username,
     });
-    res.json(deletedBookingEntry);
+    res.status(200).json({success: {bookingEntry: deletedBookingEntry}});
   } catch (error) {
-    logger.error(error);
-    res.json({ message: error });
+    logger.error("Error while accessing the database:" + error);
+    res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
   }
 });
 
