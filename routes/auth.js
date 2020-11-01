@@ -53,7 +53,7 @@ router.post("/recoverPass", async (req, res) => {
       "Passwort für TimesBook setzen",
       "<p>Sehr geehrter Nutzer,</p><br>" +
       `<p>Zum Setzen eines neuen Passwortes für Ihr Benutzerkonto folgen Sie bitte diesem Link:</p><br/>` +
-      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
+      `<p><a href="${process.env.FRONTEND_URL}/ResetPassword?username=${req.body.username}&regKey=${randString}">${process.env.FRONTEND_URL}/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p><br/>` +
       "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
       "TimesBook")
       .then(() => {
@@ -202,7 +202,7 @@ router.post("/register", async (req, res) => {
     "Registrierung bei TimesBook abschließen",
     "<p>Sehr geehrter Nutzer,</p>" +
     `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung des Zeiterfassunssystems 'TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p>` +
-    `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
+    `<p><a href="${process.env.FRONTEND_URL}/confirmAccount?username=${req.body.username}&regKey=${randString}">${process.env.FRONTEND_URL}confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
     "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
     "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
     "TimesBook")
@@ -307,7 +307,7 @@ router.post("/invite", auth, async (req, res) => {
       "Einladung von TimesBook ",
       "<p>Sehr geehrter Nutzer,</p>" +
       `<p>Sie sind vom Verwalter Ihrer Organisation ${req.requestingUser.organization} zur Nutzung des Zeiterfassungssystems 'TimesBook' eingeladen. Damit Sie die App nutzen können, schließen Sie bitte Ihre Registrierung unter folgendem Link ab:</p>` +
-      `<p><a href="http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}">http://localhost:3000/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p>` +
+      `<p><a href="${process.env.FRONTEND_URL}/ResetPassword?username=${req.body.username}&regKey=${randString}">${process.env.FRONTEND_URL}/ResetPassword?username=${req.body.username}&regKey=${randString}</a></p>` +
       "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
       "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
       "TimesBook")
