@@ -32,11 +32,6 @@ function checkTimes(reqDay, reqStart, reqEnd, reqPause = "00:00") {
   const start = moment(reqStart, moment.ISO_8601);
   const end = moment(reqEnd, moment.ISO_8601);
 
-  if (!start.isAfter(day))
-    throw new InvalidDateException("'start' is out of booking day");
-  if (!end.isBefore(day.add(1, "days")))
-    throw new InvalidDateException("'end' is out of booking day");
-
   reqPause = reqPause.trim();
   const patt = new RegExp("/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/");
   if (patt.test(reqPause))
@@ -98,80 +93,6 @@ function trimBody(body) {
 }
 
 /**
- * Creates a new booking entry
- *
- */
-router.post("/:username", auth, async (req, res) => {
-  logger.info(
-    "POST - username: " +
-      req.params.username +
-      ", body: " +
-      JSON.stringify(req.body)
-  );
-  try {
-    body = trimBody(req.body);
-    checkTimes(body.day, body.start, body.end, body.pause);
-    const bookingEntry = new BookingEntry({
-      username: req.params.username,
-      day: body.day,
-      start: body.start,
-      end: body.end,
-      pause: body.pause,
-      activities: body.activities,
-    });
-    try {
-      const savedBookingEntry = await bookingEntry.save();
-      logger.debug(JSON.stringify(savedBookingEntry));
-      res.json(savedBookingEntry);
-    } catch (error) {
-      logger.error(err);
-      res.status(500).json(err);
-    }
-  } catch (err) {
-    logger.error(err);
-    res.status(400).json(err);
-  }
-});
-
-/**
- * Get all booking entries
- *
- */
-router.get("/:username", auth, async (req, res) => {
-  logger.info(`GET - username: ${req.params.username}`);
-  try {
-    const bookingEntries = await BookingEntry.find({
-      username: req.params.username,
-    });
-    logger.debug(JSON.stringify(bookingEntries));
-    res.json(bookingEntries);
-  } catch (error) {
-    logger.error(error);
-    res.json({ message: error });
-  }
-});
-
-/**
- * Get booking entries by day
- *
- */
-router.get("/:username/:day", auth, async (req, res) => {
-  logger.info(`GET - username: ${req.params.username}, day: ${req.params.day}`);
-  try {
-    const day = checkDay(req.params.day);
-    const bookingEntry = await BookingEntry.find({
-      day: day,
-      username: req.params.username,
-    });
-    logger.debug(JSON.stringify(bookingEntry));
-    res.json(bookingEntry);
-  } catch (error) {
-    logger.error(error);
-    res.json({ message: error });
-  }
-});
-
-/**
  * Get booking entries between two days
  *
  */
@@ -201,12 +122,7 @@ router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
  *
  */
 router.patch("/:username", auth, async (req, res) => {
-  logger.info(
-    "PACTH - username: " +
-      req.params.username +
-      ", body: " +
-      JSON.stringify(req.body)
-  );
+  logger.info("PACTH - username: " + req.params.username + ", body: " +JSON.stringify(req.body));
   try {
     body = trimBody(req.body);
     checkTimes(body.day, body.start, body.end, body.pause);
@@ -224,14 +140,14 @@ router.patch("/:username", auth, async (req, res) => {
       },
       { upsert: true }
     );
-    res.json(req.body);
+    res.json({success: {bookingEntry: req.body}});
   } catch (error) {
     if (error.name === "InvalidDateException") {
       logger.error(error.message);
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ errorCode:4019, message: error.message });
     } else {
-      logger.error(error);
-      res.json({ messagesssss: error });
+      logger.error("Error while accessing the database:" + error);
+      res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
     }
   }
 });

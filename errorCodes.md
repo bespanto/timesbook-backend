@@ -58,6 +58,9 @@ The organization must be at least one character long
 ### 4018
 The user already exists
 
+### 4019
+Date or time error: format, period, etc.
+
 #
 ## 500 codes
 #
