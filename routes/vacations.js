@@ -15,21 +15,16 @@ const mailer = require("../utils/mailer");
 router.delete("/:id", auth, async (req, res) => {
   logger.info("DELETE request on endpoint '/vacation/'. Id: " + req.params.id);
 
-  const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
-  if (!user)
-    return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
-  else {
-
-    try {
-      const vacations = await Vacation.deleteOne({ username: user.username, _id: req.params.id });
-      res.status(200).send({ success: "Vacation was successfuly deleted" });
-    } catch (error) {
-      logger.error("Error while accessing Database: " + error);
-      res.status(500).send({ errorCode: 5001, message: error });
-    }
+  try {
+    const vacations = await Vacation.deleteOne({ username: req.requestingUser.username, _id: req.params.id });
+    res.status(200).send({ success: "Vacation was successfuly deleted" });
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 
 });
+
 
 /**
  *  Gets all vacation entries by user from jwt
@@ -37,18 +32,13 @@ router.delete("/:id", auth, async (req, res) => {
 router.get("/", auth, async (req, res) => {
   logger.info("GET request on endpoint '/vacation/'");
 
-  const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
-  if (!user)
-    return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
-  else {
-    try {
-      const vacations = await Vacation.find({ username: user.username });
-      logger.debug(vacations);
-      res.status(200).send({ success: { vacations } });
-    } catch (error) {
-      logger.error("Error while accessing Database: " + error);
-      res.status(500).send({ errorCode: 5001, message: error });
-    }
+  try {
+    const vacations = await Vacation.find({ username: req.requestingUser.username });
+    logger.debug(vacations);
+    res.status(200).send({ success: { vacations } });
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 
 });
@@ -102,57 +92,53 @@ router.post("/:username", auth, async (req, res) => {
     }
     else {
       try {
-        const user = await User.findById(req.decodedToken._id, { password: 0, _id: 0 });
-        if (!user)
-          return res.status(400).send({ errorCode: 4009, message: "No user found for the given id" });
-        else
-          if (user.username !== req.params.username)
-            return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
-          else {
-            const vacations = await Vacation.find({ username: user.username });
-            let periodOverlap = false;
-            for (let i = 0; i < vacations.length; i++) {
-              const element = vacations[i];
-              const vacFrom  = moment.utc(element.from);
-              const vacTill  = moment.utc(element.till);
-              if (moment(start).isBetween(vacFrom, vacTill, undefined, '[]') ||
-                moment(end).isBetween(vacFrom, vacTill, undefined, '[]')) {
-                periodOverlap = true;
-                break;
-              }
-            }
-            if (periodOverlap)
-              return res.status(400).send({ errorCode: 4015, message: "Overlapping of the periods" });
-            else {
-              const vacationEntry = new Vacation({
-                username: req.params.username,
-                from: req.body.from,
-                till: req.body.till,
-                status: "pending"
-              });
-              const savedVacationEntry = await vacationEntry.save();
-              logger.debug("The vacation was sucessfully added: " + JSON.stringify(savedVacationEntry));
-
-              const admin = await User.findOne({ organisation: user.organisation, role: 'admin' });
-              mailer(
-                req.params.username,
-                "Urlaubsanfrage",
-                "<p>Sehr geehrter Admin,</p><br>" +
-                `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${user.name} erhalten. ` +
-                `Sie können die Anfrage im Menü-Punkt 'Urlaubsanträge' bearbeiten.` +
-                `<p><a href="http://localhost:3000/VacationRequests">http://localhost:3000/VacationRequests</a></p><br/>` +
-                "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-                "TimesBook")
-                .then(() => {
-                  logger.info("E-mail with the vacation request for '" + req.params.username + "' was send to admin: '" + admin.username + "'");
-                  res.status(200).send({ success: "The vacation was sucessfully added" });
-                })
-                .catch((err) => {
-                  logger.error("Error while sending e-mail: " + err);
-                  res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
-                });
+        if (req.requestingUser.username !== req.params.username)
+          return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
+        else {
+          const vacations = await Vacation.find({ username: req.requestingUser.username });
+          let periodOverlap = false;
+          for (let i = 0; i < vacations.length; i++) {
+            const element = vacations[i];
+            const vacFrom = moment.utc(element.from);
+            const vacTill = moment.utc(element.till);
+            if (moment(start).isBetween(vacFrom, vacTill, undefined, '[]') ||
+              moment(end).isBetween(vacFrom, vacTill, undefined, '[]')) {
+              periodOverlap = true;
+              break;
             }
           }
+          if (periodOverlap)
+            return res.status(400).send({ errorCode: 4015, message: "Overlapping of the periods" });
+          else {
+            const vacationEntry = new Vacation({
+              username: req.params.username,
+              from: req.body.from,
+              till: req.body.till,
+              status: "pending"
+            });
+            const savedVacationEntry = await vacationEntry.save();
+            logger.debug("The vacation was sucessfully added: " + JSON.stringify(savedVacationEntry));
+
+            const admin = await User.findOne({ organisation: req.requestingUser.organisation, role: 'admin' });
+            mailer(
+              req.params.username,
+              "TimesBook: Urlaubsanfrage",
+              "<p>Sehr geehrter Nutzer,</p>" +
+              `<p>Sie haben eine Urlaubsanfrage vom Mitarbeiter ${req.requestingUser.name} erhalten. ` +
+              `Sie können die Anfrage im Menü-Punkt 'Urlaubsanträge' bearbeiten.` +
+              `<p><a href="${process.env.FRONTEND_URL}/VacationRequests">${process.env.FRONTEND_URL}/VacationRequests</a></p>` +
+              "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+              "TimesBook")
+              .then(() => {
+                logger.info("E-mail with the vacation request for '" + req.params.username + "' was send to admin: '" + admin.username + "'");
+                res.status(200).send({ success: "The vacation was sucessfully added" });
+              })
+              .catch((err) => {
+                logger.error("Error while sending e-mail: " + err);
+                res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+              });
+          }
+        }
       } catch (error) {
         logger.error("Error while accessing Database: " + error);
         res.status(500).send({ errorCode: 5001, message: error });
@@ -160,6 +146,5 @@ router.post("/:username", auth, async (req, res) => {
     }
   }
 });
-
 
 module.exports = router;
