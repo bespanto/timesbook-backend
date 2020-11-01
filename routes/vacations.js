@@ -10,6 +10,29 @@ const mailer = require("../utils/mailer");
 
 
 /**
+ *  Patch a specific vacation
+ */
+router.patch("/:id", auth, async (req, res) => {
+  logger.info("PATCH request on endpoint '/vacation/'. Id: " + req.params.id + ", body: " + JSON.stringify(req.body));
+
+  try {
+    const vacations = await Vacation.updateOne(
+      { _id: req.params.id },
+      {
+        $set: {
+          status: req.body.status,
+        },
+      }
+      );
+    res.status(200).send({ success: "Vacation was successfuly updated" });
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
+  }
+
+});
+
+/**
  *  Delets a specific vacation
  */
 router.delete("/:id", auth, async (req, res) => {
