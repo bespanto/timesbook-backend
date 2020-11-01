@@ -77,28 +77,22 @@ router.post("/recoverPass", async (req, res) => {
  *
  */
 router.patch("/confirmAdminAccount", async (req, res) => {
-  logger.info(
-    "POST request on endpoint '/auth/confirmAdminAccount'. Body: " + JSON.stringify(req.body)
-  );
+  logger.info("POST request on endpoint '/auth/confirmAdminAccount'. Body: " + JSON.stringify(req.body));
 
-  const accountMatched = await User.findOne({
-    username: req.body.username,
-    registrationKey: 'matched',
-  });
-  if (accountMatched) {
-    logger.error(`Account ${req.body.username} was already confirmed`);
-    return res.status(200).send({ success: "Account " + req.body.username + "' was already confirmed." });
+  const user = await User.findOne({ username: req.body.username, });
+  if(!user){
+    logger.error(`User was not found for the given username (e-mail): ${req.body.username}`);
+    return res.status(400).send({ errorCode: 4003, message: "User was not found for the given username (e-mail)" });
   }
-
-  const userExists = await User.findOne({
-    username: req.body.username,
-    registrationKey: req.body.registrationKey,
-  });
-  if (!userExists) {
+  else if (user.registrationKey === 'matched') {
+    logger.error(`Account ${req.body.username} was already confirmed`);
+    return res.status(200).send({ errorCode: 4023, message: "Account " + req.body.username + "' was already confirmed." });
+  }
+  else if (user.registrationKey !== req.body.registrationKey) {
     logger.error(`Username: ${req.body.username} is not registered or registartion key is invalid`);
-    return res.status(400)
-      .send({ errorCode: 4003, message: "Username: " + req.body.username + "' is not registered or registartion key is invalid" });
-  } else {
+    return res.status(400).send({ errorCode: 4022, message: "Registartion key is invalid" });
+  }
+  else {
     try {
       const update = await User.updateOne(
         {
@@ -205,7 +199,7 @@ router.post("/register", async (req, res) => {
   const randString = cryptoRandomString({ length: 30 });
   mailer(
     req.body.username,
-    "Registrierung in TimesBook abschließen",
+    "Registrierung bei TimesBook abschließen",
     "<p>Sehr geehrter Nutzer,</p>" +
     `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung des Zeiterfassunssystems 'TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p>` +
     `<p><a href="http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}">http://localhost:3000/confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
@@ -293,7 +287,7 @@ router.post("/login", async (req, res) => {
   const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {
     expiresIn: 86400,
   });
-  res.header("auth-token", token).send({ jwt: token });
+  res.header("auth-token", token).send({success: {jwt: token} });
 });
 
 
@@ -371,7 +365,7 @@ router.patch("/changePass/", auth, async (req, res) => {
   const result = validate({ password: req.body.password }, constraints);
   if (result !== undefined) {
     if (result.pass)
-      res.status(400).send("The password must be at least six characters long");
+      res.status(400).send({ errorCode: 4020, message: "The password must be at least six characters long" });
   } else {
     try {
       const salt = await bcrypt.genSalt(10);

@@ -61,6 +61,18 @@ The user already exists
 ### 4019
 Date or time error: format, period, etc.
 
+### 4020
+The passwort is to short
+
+### 4021
+The user is not find in the organisation
+
+### 4022
+Registartion key is invalid
+
+### 4023
+The account is already confirmed
+
 #
 ## 500 codes
 #

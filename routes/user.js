@@ -80,7 +80,7 @@ router.patch("/:username", auth, async (req, res) => {
 
 
 /**
- * Gets all user profiles of a organization
+ * Gets all user profiles of an organization
  *
  */
 router.get("/", auth, async (req, res) => {
@@ -118,7 +118,7 @@ router.get("/profile", auth, async (req, res) => {
 
 
 /**
- * Gets user profile
+ * Gets the user profile in the organization of the requesting user 
  *
  */
 router.get("/:username", auth, async (req, res) => {
@@ -135,7 +135,7 @@ router.get("/:username", auth, async (req, res) => {
           { password: 0, _id: 0, registrationKey: 0 });
         if (!requestedUser) {
           logger.error("User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'");
-          return res.status(400).send({ errorCode: 4009, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
+          return res.status(400).send({ errorCode: 4021, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
         }
         else
           resObj = requestedUser;
