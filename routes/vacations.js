@@ -25,11 +25,29 @@ router.delete("/:id", auth, async (req, res) => {
 
 });
 
+/**
+ *  Gets all vacation entries by user from jwt
+ */
+router.get("/byOrga", auth, async (req, res) => {
+  logger.info("GET request on endpoint /byOrga");
+
+  try {
+    const usersFromOrga = await User.find({ organization: req.requestingUser.organization });
+
+    const vacations = await Vacation.find({ username: {$in: usersFromOrga.map(item => item.username)}});
+    logger.debug(vacations);
+    res.status(200).send({ success: { vacations } });
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
+  }
+
+});
 
 /**
  *  Gets all vacation entries by user from jwt
  */
-router.get("/", auth, async (req, res) => {
+router.get("/byUser", auth, async (req, res) => {
   logger.info("GET request on endpoint '/vacation/'");
 
   try {
