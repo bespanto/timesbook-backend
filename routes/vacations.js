@@ -29,7 +29,22 @@ router.patch("/:id", auth, async (req, res) => {
           },
         }
       );
-      res.status(200).send({ success: "Vacation was successfuly updated" });
+      const vacation = await Vacation.findById(req.params.id);
+      mailer(
+        vacation.username,
+        "TimesBook: Ihr Urlaubsantrag vom " + moment(vacation.from).format('DD.MM.YYYY') + " bis " + moment(vacation.till).format('DD.MM.YYYY'),
+        "<p>Sehr geehrter Nutzer,</p>" +
+        "<p>Ihr Urlaubsantrag wurde  " + (req.body.status === 'approved' ? "genehmigt." : "abgelehnt." + "</p>") +
+        "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+        "TimesBook")
+        .then(() => {
+          logger.info("E-mail with the decision for vacation request for '" + vacation.username + "' was sent");
+          res.status(200).send({ success: "Vacation was successfuly updated" });
+        })
+        .catch((err) => {
+          logger.error("Error while sending e-mail: " + err);
+          res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+        });
     } catch (error) {
       logger.error("Error while accessing Database: " + error);
       res.status(500).send({ errorCode: 5001, message: error });
@@ -57,10 +72,14 @@ router.delete("/:id", auth, async (req, res) => {
  *  Gets all vacation entries by user from jwt
  */
 router.get("/byOrga", auth, async (req, res) => {
-  logger.info("GET request on endpoint /byOrga");
+  logger.info("GET request on endpoint /byOrga. Name: " + req.query.name);
 
   try {
-    const usersFromOrga = await User.find({ organization: req.requestingUser.organization });
+    let usersFromOrga;
+    if (req.query.name)
+      usersFromOrga = await User.find({ name: req.query.name, organization: req.requestingUser.organization });
+    else
+      usersFromOrga = await User.find({ organization: req.requestingUser.organization });
     const vacations = await Vacation.find({ username: { $in: usersFromOrga.map(item => item.username) } });
 
     let objects = [];
