@@ -89,7 +89,8 @@ router.get("/", auth, async (req, res) => {
   try {
     if (req.requestingUser.role === "admin") {
       const users = await User.find(
-        { $and: [{ organization: req.requestingUser.organization }, { username: { $ne: req.requestingUser.username } }] },
+        // { $and: [{ organization: req.requestingUser.organization }, { username: { $ne: req.requestingUser.username } }] },
+        { organization: req.requestingUser.organization },
         { password: 0, _id: 0, registrationKey: 0 });
       res.status(200).send({ success: { users: users } });
     } else {
