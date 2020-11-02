@@ -61,10 +61,22 @@ router.get("/byOrga", auth, async (req, res) => {
 
   try {
     const usersFromOrga = await User.find({ organization: req.requestingUser.organization });
-
     const vacations = await Vacation.find({ username: { $in: usersFromOrga.map(item => item.username) } });
-    logger.debug(vacations);
-    res.status(200).send({ success: { vacations } });
+
+    let objects = [];
+    vacations.forEach(vac => {
+      let name = usersFromOrga.find(element => element.username === vac.username).name
+      let obj = {};
+      obj.name = name;
+      obj._id = vac._id;
+      obj.username = vac.username;
+      obj.from = vac.from;
+      obj.till = vac.till;
+      obj.status = vac.status
+      objects.push(obj);
+    })
+
+    res.status(200).send({ success: { vacations: objects } });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
     res.status(500).send({ errorCode: 5001, message: error });
