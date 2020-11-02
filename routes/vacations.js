@@ -15,25 +15,30 @@ const mailer = require("../utils/mailer");
 router.patch("/:id", auth, async (req, res) => {
   logger.info("PATCH request on endpoint '/vacation/'. Id: " + req.params.id + ", body: " + JSON.stringify(req.body));
 
-  try {
-    const vacations = await Vacation.updateOne(
-      { _id: req.params.id },
-      {
-        $set: {
-          status: req.body.status,
-        },
-      }
-      );
-    res.status(200).send({ success: "Vacation was successfuly updated" });
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
+  if (req.requestingUser.role !== 'admin') {
+    logger.info("You have no permissions to change vacation data for another user");
+    return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change vacation data for another user" });
   }
+  else
+    try {
+      const vacations = await Vacation.updateOne(
+        { _id: req.params.id },
+        {
+          $set: {
+            status: req.body.status,
+          },
+        }
+      );
+      res.status(200).send({ success: "Vacation was successfuly updated" });
+    } catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
 
 });
 
 /**
- *  Delets a specific vacation
+ *  Deletes a specific vacation
  */
 router.delete("/:id", auth, async (req, res) => {
   logger.info("DELETE request on endpoint '/vacation/'. Id: " + req.params.id);
@@ -57,7 +62,7 @@ router.get("/byOrga", auth, async (req, res) => {
   try {
     const usersFromOrga = await User.find({ organization: req.requestingUser.organization });
 
-    const vacations = await Vacation.find({ username: {$in: usersFromOrga.map(item => item.username)}});
+    const vacations = await Vacation.find({ username: { $in: usersFromOrga.map(item => item.username) } });
     logger.debug(vacations);
     res.status(200).send({ success: { vacations } });
   } catch (error) {
