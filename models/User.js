@@ -1,7 +1,53 @@
 const mongoose = require("mongoose");
 mongoose.set("useCreateIndex", true);
 
-const UserSchema = mongoose.Schema({
+
+const workingModel = mongoose.Schema({
+  monday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  thuesday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  wednesday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  thursday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  friday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  saturday: {
+    type: Number,
+    required: true,
+    min: [0, 'Min. working hours must be 0'],
+    max: [10, 'Max. working hours must be 12'],
+  },
+  validFrom: {
+    type: Date,
+    required: true,
+  },
+})
+// workingModel.index({ validFrom: -1 }, { unique: false });
+mongoose.model("WorkingModel", workingModel);
+
+const userSchema = mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -38,7 +84,10 @@ const UserSchema = mongoose.Schema({
     required: true,
     default: Date.now,
   },
+  workingModels: [workingModel]
 });
+userSchema.index({ username: 1 }, { unique: true });
+userSchema.index({ "workingModels.validFrom": -1 }, { unique: false });
 
-UserSchema.index({ username: 1 }, { unique: true });
-module.exports = mongoose.model("Users", UserSchema);
+
+module.exports = mongoose.model("Users", userSchema);

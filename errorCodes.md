@@ -73,6 +73,9 @@ Registartion key is invalid
 ### 4023
 The account is already confirmed
 
+### 4024
+A day must be from last working model
+
 #
 ## 500 codes
 #
