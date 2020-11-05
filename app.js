@@ -6,8 +6,9 @@ const cors = require('cors')
 require('dotenv/config');
 const bookingEntriesRoute = require('./routes/bookingEntries')
 const authRoute = require('./routes/auth')
-const userRoute = require('./routes/user')
+const userRoute = require('./routes/users')
 const vacationsRoute = require('./routes/vacations')
+const workingModelRoute = require('./routes/workingModels')
 
 
 //Middleware
@@ -17,6 +18,7 @@ app.use('/api/bookingEntries', bookingEntriesRoute);
 app.use('/api/user', userRoute);
 app.use('/api/auth', authRoute);
 app.use('/api/vacation', vacationsRoute);
+app.use('/api/workingModel', workingModelRoute);
 
 app.get('/', (req, res) => {
     res.send('We are on home');

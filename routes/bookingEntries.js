@@ -109,7 +109,6 @@ router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
         { day: { $lte: new Date(req.params.tillDay) } },
       ],
     });
-    logger.debug(JSON.stringify(bookingEntries));
     res.status(200).send({ success: { bookingEntries } });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);

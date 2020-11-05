@@ -19,7 +19,7 @@ async function verify(req, res, next) {
         logger.error("The requesting user with the given ID provided by JWT does not exist.");
         return res.status(400).send({ errorCode: 4009, message: "The requesting user with the given ID provided by JWT does not exist." });
       }
-      logger.info("Requesting user: " + user);
+      // logger.info("Requesting user: " + user);
       req.requestingUser = user;
       next();
     } catch (error) {
