@@ -3,37 +3,37 @@ mongoose.set("useCreateIndex", true);
 
 
 const workingModel = mongoose.Schema({
-  monday: {
+  1: { // monday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
     max: [10, 'Max. working hours must be 12'],
   },
-  thuesday: {
+  2: { //thuesday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
     max: [10, 'Max. working hours must be 12'],
   },
-  wednesday: {
+  3: { //wednesday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
     max: [10, 'Max. working hours must be 12'],
   },
-  thursday: {
+  4: { //thursday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
     max: [10, 'Max. working hours must be 12'],
   },
-  friday: {
+  5: { //friday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
     max: [10, 'Max. working hours must be 12'],
   },
-  saturday: {
+  6: { //saturday
     type: Number,
     required: true,
     min: [0, 'Min. working hours must be 0'],
