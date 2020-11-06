@@ -21,7 +21,7 @@ router.delete("/:id", auth, async (req, res) => {
     "DELETE request on endpoint '/workingModel/:id'. Id: " + req.params.id);
 
   try {
-    await User.updateMany({}, {$pull: { workingModels: {_id: req.params.id}}});
+    await User.updateMany({}, { $pull: { workingModels: { _id: req.params.id } } });
     logger.debug('Deleted')
     res.status(200).send({ success: "User was deleted" });
   } catch (error) {
@@ -48,10 +48,13 @@ router.get("/:username", auth, async (req, res) => {
         return res.status(400).send({ errorCode: 4021, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
       }
       else {
+        console.log(requestedUser.workingModels)
         if (requestedUser.workingModels && requestedUser.workingModels.length > 0) {
           requestedUser.workingModels.sort((a, b) => a.validFrom - b.validFrom)
           res.status(200).send({ success: { workingModels: requestedUser.workingModels } });
         }
+        else
+          res.status(200).send({ success: { workingModels: [] } });
       }
     }
     else {
