@@ -108,7 +108,6 @@ router.get("/", auth, async (req, res) => {
 router.get("/profile", auth, async (req, res) => {
   logger.info("GET request on endpoint '/user/profile'");
 
-  logger.info("Requested user: " + req.requestingUser);
   res.status(200).send({ success: { user: req.requestingUser } });
 
 });
@@ -187,32 +186,43 @@ router.get("/:username/overview", auth, async (req, res) => {
 
 async function getOvertimeFromUserRegistration(user) {
   let overtimeAsMin = 0;
+  let shoudToBeHours = 0;
+  let totalWorkingTime = 0;
+  
+  const fromStr = moment(user.registrationDate).format('YYYY-MM-DD');
+  let from = moment(fromStr);
+  let till = moment();
+  let actDay = moment(fromStr);
+
+  while (actDay < till) {
+    const targetWorkingModel = getTargetWorkingModel(user.workingModels, actDay.format('YYYY-MM-DD'));
+    let targetDayHours = targetWorkingModel ? targetWorkingModel[actDay.day()] : 0;
+    shoudToBeHours = shoudToBeHours + (targetDayHours === undefined ? 0 : targetDayHours);
+    actDay = actDay.add(moment.duration({'days' : 1}));
+  }
   try {
     const bookingEntries = await BookingEntry.find({
       username: user.username,
       $and: [
-        { day: { $gte: new Date(moment(user.registrationDate).format('YYYY-MM-DD')) } },
-        { day: { $lte: new Date() } },
+        { day: { $gte: from.toDate() } },
+        { day: { $lte: till.toDate() } },
       ],
     });
-    if(bookingEntries){
+    if (bookingEntries) {
       bookingEntries.forEach((element) => {
-        const targetWorkingModel = getTargetWorkingModel(user.workingModels, element.start);
-        const targetDayHours = targetWorkingModel ? targetWorkingModel[moment(element.start).day()] : 0;
         const workingTime = moment.duration(moment(element.end).diff(moment(element.start))).asMinutes();
         const pause = moment.duration(element.pause).asMinutes();
-        overtimeAsMin = overtimeAsMin + workingTime - pause - (targetDayHours ? targetDayHours : 0) * 60;
+        totalWorkingTime = totalWorkingTime + workingTime - pause;
       })
     }
   } catch (error) {
     throw new Error("Unable to compute overtime " + error)
   }
-  return overtimeAsMin;
+  return overtimeAsMin = totalWorkingTime - shoudToBeHours*60;
 }
 
 
 function getTargetWorkingModel(models, startTime) {
-
   let targetWorkingModel;
   if (models && models.length > 0) // mind. ein Arbeitsmodell definiert
     if (models.length === 1) {
