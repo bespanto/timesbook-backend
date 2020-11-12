@@ -3,6 +3,7 @@ const router = express.Router();
 const moment = require("moment");
 const auth = require("./verifyToken");
 const BookingEntry = require("../models/BookingEntry");
+const User = require("../models/User");
 const logger = require("../utils/logger");
 
 /**
@@ -171,5 +172,95 @@ router.delete("/:username/:day", auth, async (req, res) => {
     res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
   }
 });
+
+/**
+ * Gets an overview for an user
+ *
+ */
+router.get("/:username/flextime", auth, async (req, res) => {
+  logger.info(`GET request on endpoint '/bookingEntries/${req.params.username}/flextime'`);
+
+  try {
+
+    if (req.requestingUser.username === req.params.username || req.requestingUser.role === 'admin') {
+      const requestedUser = await User.findOne(
+        { username: req.params.username, organization: req.requestingUser.organization },
+        { password: 0, _id: 0, registrationKey: 0 });
+      if (!requestedUser) {
+        logger.error("User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'");
+        return res.status(400).send({ errorCode: 4021, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
+      }
+      else {
+        const flextime = await getFlextimeFromUserRegistration(requestedUser);
+        res.status(200).send({ success: { flextime: flextime } });
+      }
+    }
+    else {
+      logger.error("No permissions to retrieve user info.");
+      return res.status(403).send({ errorCode: 4010, message: "No permissions to retrieve user info." });
+    }
+  } catch (error) {
+    logger.error("Error while accessing the database: " + error)
+    res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
+  }
+});
+
+async function getFlextimeFromUserRegistration(user) {
+  let overtimeAsMin = 0;
+  let shoudToBeHours = 0;
+  let totalWorkingTime = 0;
+  
+  const fromStr = moment(user.registrationDate).format('YYYY-MM-DD');
+  let from = moment(fromStr);
+  let till = moment();
+  let actDay = moment(fromStr);
+
+  while (actDay < till) {
+    const targetWorkingModel = getTargetWorkingModel(user.workingModels, actDay.format('YYYY-MM-DD'));
+    let targetDayHours = targetWorkingModel ? targetWorkingModel[actDay.day()] : 0;
+    shoudToBeHours = shoudToBeHours + (targetDayHours === undefined ? 0 : targetDayHours);
+    actDay = actDay.add(moment.duration({'days' : 1}));
+  }
+  try {
+    const bookingEntries = await BookingEntry.find({
+      username: user.username,
+      $and: [
+        { day: { $gte: from.toDate() } },
+        { day: { $lte: till.toDate() } },
+      ],
+    });
+    if (bookingEntries) {
+      bookingEntries.forEach((element) => {
+        const workingTime = moment.duration(moment(element.end).diff(moment(element.start))).asMinutes();
+        const pause = moment.duration(element.pause).asMinutes();
+        totalWorkingTime = totalWorkingTime + workingTime - pause;
+      })
+    }
+  } catch (error) {
+    throw new Error("Unable to compute overtime " + error)
+  }
+  return overtimeAsMin = totalWorkingTime - shoudToBeHours*60;
+}
+
+
+function getTargetWorkingModel(models, startTime) {
+  let targetWorkingModel;
+  if (models && models.length > 0) // mind. ein Arbeitsmodell definiert
+    if (models.length === 1) {
+      if (moment(models[0].validFrom).isSameOrBefore(moment(startTime)))
+        targetWorkingModel = models[0];
+    }
+    else if (models.length > 1) {
+      for (let index = 0; index < models.length - 1; index++) {
+        if (moment(startTime).isBetween(models[index].validFrom, models[index + 1].validFrom, undefined, '[)'))
+          targetWorkingModel = models[index];
+        else if (index + 1 === models.length - 1)
+          if (moment(startTime).isSameOrAfter(moment(models[index + 1].validFrom)))
+            targetWorkingModel = models[index + 1];
+
+      }
+    }
+  return targetWorkingModel;
+}
 
 module.exports = router;
