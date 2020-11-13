@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const moment = require("moment");
+const flextime = require("../utils/flextime");
 const auth = require("./verifyToken");
 const BookingEntry = require("../models/BookingEntry");
 const User = require("../models/User");
@@ -191,8 +192,8 @@ router.get("/:username/flextime", auth, async (req, res) => {
         return res.status(400).send({ errorCode: 4021, message: "User '" + req.params.username + "' was not found in organization '" + req.requestingUser.organization + "'" });
       }
       else {
-        const flextime = await getFlextimeFromUserRegistration(requestedUser);
-        res.status(200).send({ success: { flextime: flextime } });
+        const ftime = await flextime(requestedUser);
+        res.status(200).send({ success: { flextime: ftime } });
       }
     }
     else {
@@ -205,62 +206,5 @@ router.get("/:username/flextime", auth, async (req, res) => {
   }
 });
 
-async function getFlextimeFromUserRegistration(user) {
-  let overtimeAsMin = 0;
-  let shoudToBeHours = 0;
-  let totalWorkingTime = 0;
-  
-  const fromStr = moment(user.registrationDate).format('YYYY-MM-DD');
-  let from = moment(fromStr);
-  let till = moment();
-  let actDay = moment(fromStr);
-
-  while (actDay < till) {
-    const targetWorkingModel = getTargetWorkingModel(user.workingModels, actDay.format('YYYY-MM-DD'));
-    let targetDayHours = targetWorkingModel ? targetWorkingModel[actDay.day()] : 0;
-    shoudToBeHours = shoudToBeHours + (targetDayHours === undefined ? 0 : targetDayHours);
-    actDay = actDay.add(moment.duration({'days' : 1}));
-  }
-  try {
-    const bookingEntries = await BookingEntry.find({
-      username: user.username,
-      $and: [
-        { day: { $gte: from.toDate() } },
-        { day: { $lte: till.toDate() } },
-      ],
-    });
-    if (bookingEntries) {
-      bookingEntries.forEach((element) => {
-        const workingTime = moment.duration(moment(element.end).diff(moment(element.start))).asMinutes();
-        const pause = moment.duration(element.pause).asMinutes();
-        totalWorkingTime = totalWorkingTime + workingTime - pause;
-      })
-    }
-  } catch (error) {
-    throw new Error("Unable to compute overtime " + error)
-  }
-  return overtimeAsMin = totalWorkingTime - shoudToBeHours*60;
-}
-
-
-function getTargetWorkingModel(models, startTime) {
-  let targetWorkingModel;
-  if (models && models.length > 0) // mind. ein Arbeitsmodell definiert
-    if (models.length === 1) {
-      if (moment(models[0].validFrom).isSameOrBefore(moment(startTime)))
-        targetWorkingModel = models[0];
-    }
-    else if (models.length > 1) {
-      for (let index = 0; index < models.length - 1; index++) {
-        if (moment(startTime).isBetween(models[index].validFrom, models[index + 1].validFrom, undefined, '[)'))
-          targetWorkingModel = models[index];
-        else if (index + 1 === models.length - 1)
-          if (moment(startTime).isSameOrAfter(moment(models[index + 1].validFrom)))
-            targetWorkingModel = models[index + 1];
-
-      }
-    }
-  return targetWorkingModel;
-}
 
 module.exports = router;
