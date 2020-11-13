@@ -9,6 +9,7 @@ const authRoute = require('./routes/auth')
 const userRoute = require('./routes/users')
 const vacationsRoute = require('./routes/vacations')
 const workingModelRoute = require('./routes/workingModels')
+const correctionRoute = require('./routes/corrections')
 
 
 //Middleware
@@ -19,6 +20,7 @@ app.use('/api/user', userRoute);
 app.use('/api/auth', authRoute);
 app.use('/api/vacation', vacationsRoute);
 app.use('/api/workingModel', workingModelRoute);
+app.use('/api/correction', correctionRoute);
 
 app.get('/', (req, res) => {
     res.send('We are on home');

@@ -76,6 +76,9 @@ The account is already confirmed
 ### 4024
 A day must be from last working model
 
+### 4025
+An integer expected
+
 #
 ## 500 codes
 #
