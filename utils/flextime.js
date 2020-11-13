@@ -1,11 +1,13 @@
 const moment = require("moment");
 const BookingEntry = require("../models/BookingEntry");
+const Correction = require("../models/Correction");
 
 const flextime = async function getFlextimeFromUserRegistration(user) {
 
     let overtimeAsMin = 0;
     let shoudToBeHours = 0;
     let totalWorkingTime = 0;
+    let totalCorrections = 0;
     
     const fromStr = moment(user.registrationDate).format('YYYY-MM-DD');
     let from = moment(fromStr);
@@ -33,10 +35,15 @@ const flextime = async function getFlextimeFromUserRegistration(user) {
           totalWorkingTime = totalWorkingTime + workingTime - pause;
         })
       }
+      const corrections = await Correction.find({ username: user.username, type: "flextime" });
+      corrections.forEach((el) =>{
+        totalCorrections = totalCorrections + el.value;
+      })
+
     } catch (error) {
       throw new Error("Unable to compute overtime " + error)
     }
-    return overtimeAsMin = totalWorkingTime - shoudToBeHours*60;
+    return overtimeAsMin = totalWorkingTime - shoudToBeHours*60 + totalCorrections;
   }
   
   
