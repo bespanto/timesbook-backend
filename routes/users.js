@@ -3,6 +3,9 @@ const router = express.Router();
 const moment = require("moment");
 const User = require("../models/User");
 const BookingEntry = require("../models/BookingEntry");
+const Correction = require("../models/Correction");
+const Vacation = require("../models/Vacation");
+
 const auth = require("./verifyToken");
 const logger = require("../utils/logger");
 
@@ -13,11 +16,13 @@ const logger = require("../utils/logger");
  */
 router.delete("/:username", auth, async (req, res) => {
   logger.info(
-    "DELETE request on endpoint '/:username'. Username: " + req.params.username);
+    "DELETE request on endpoint '/user/:username'. Username: " + req.params.username);
 
   try {
     await User.deleteOne({ username: req.params.username });
     await BookingEntry.deleteMany({ username: req.params.username });
+    await Vacation.deleteMany({ username: req.params.username });
+    await Correction.deleteMany({ username: req.params.username });
     res.status(200).send({ success: "User was deleted" });
   } catch (error) {
     logger.error("Error while accessing the database:" + error);
