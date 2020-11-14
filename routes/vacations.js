@@ -30,21 +30,36 @@ router.patch("/:id", auth, async (req, res) => {
         }
       );
       const vacation = await Vacation.findById(req.params.id);
-      mailer(
-        vacation.username,
-        "TimesBook: Ihr Urlaubsantrag vom " + moment(vacation.from).format('DD.MM.YYYY') + " bis " + moment(vacation.till).format('DD.MM.YYYY'),
-        "<p>Sehr geehrter Nutzer,</p>" +
-        "<p>Ihr Urlaubsantrag wurde  " + (req.body.status === 'approved' ? "genehmigt." : "abgelehnt." + "</p>") +
-        "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-        "TimesBook")
-        .then(() => {
-          logger.info("E-mail with the decision for vacation request for '" + vacation.username + "' was sent");
-          res.status(200).send({ success: "Vacation was successfuly updated" });
-        })
-        .catch((err) => {
-          logger.error("Error while sending e-mail: " + err);
-          res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
-        });
+      let status;
+      switch (req.body.status) {
+        case 'approved':
+          status = 'genehmigt';
+          break;
+        case 'rejected':
+          status = 'abgelehnt';
+          break;
+        case 'canceled':
+          status = 'storniert';
+          break;
+        default:
+          break;
+      }
+      status =
+        mailer(
+          vacation.username,
+          "TimesBook: Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag" ) + " vom " + moment(vacation.from).format('DD.MM.YYYY') + " bis " + moment(vacation.till).format('DD.MM.YYYY'),
+          "<p>Sehr geehrter Nutzer,</p>" +
+          "<p>Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag" ) + " wurde  " + status + ".</p>" +
+          "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+          "TimesBook")
+          .then(() => {
+            logger.info("E-mail with the decision for vacation request for '" + vacation.username + "' was sent");
+            res.status(200).send({ success: "Vacation was successfuly updated" });
+          })
+          .catch((err) => {
+            logger.error("Error while sending e-mail: " + err);
+            res.status(500).send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+          });
     } catch (error) {
       logger.error("Error while accessing Database: " + error);
       res.status(500).send({ errorCode: 5001, message: error });
