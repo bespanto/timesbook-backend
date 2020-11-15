@@ -43,6 +43,10 @@ const workingModel = mongoose.Schema({
     type: Date,
     required: true,
   },
+  vacationEntitlement: {
+    type: Number,
+    required: true,
+  },
 })
 // workingModel.index({ validFrom: -1 }, { unique: false });
 mongoose.model("WorkingModel", workingModel);

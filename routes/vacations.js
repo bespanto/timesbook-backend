@@ -1,5 +1,6 @@
 const express = require("express");
 const validate = require("validate.js");
+const remainingVacation = require("../utils/remainingVacation");
 const router = express.Router();
 const moment = require("moment");
 const Vacation = require("../models/Vacation");
@@ -47,9 +48,9 @@ router.patch("/:id", auth, async (req, res) => {
       status =
         mailer(
           vacation.username,
-          "TimesBook: Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag" ) + " vom " + moment(vacation.from).format('DD.MM.YYYY') + " bis " + moment(vacation.till).format('DD.MM.YYYY'),
+          "TimesBook: Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag") + " vom " + moment(vacation.from).format('DD.MM.YYYY') + " bis " + moment(vacation.till).format('DD.MM.YYYY'),
           "<p>Sehr geehrter Nutzer,</p>" +
-          "<p>Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag" ) + " wurde  " + status + ".</p>" +
+          "<p>Ihr " + (status === 'storniert' ? "Urlaub" : "Urlaubsantrag") + " wurde  " + status + ".</p>" +
           "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
           "TimesBook")
           .then(() => {
@@ -238,5 +239,28 @@ router.post("/:username", auth, async (req, res) => {
     }
   }
 });
+
+
+
+/**
+ *  Gets all vacation entries by user from jwt
+ */
+router.get("/:username/tillThisYear", auth, async (req, res) => {
+  logger.info("GET request on endpoint '/vacation/:username/tillThisYear'");
+
+  try {
+    if (req.requestingUser.username !== req.params.username || req.requestingUser.role !== 'admin')
+      return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
+    else {
+      const remVac = await remainingVacation(req.requestingUser);
+      res.status(200).send({ success: { remainigVacation: remVac} });
+    }
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
+  }
+
+});
+
 
 module.exports = router;
