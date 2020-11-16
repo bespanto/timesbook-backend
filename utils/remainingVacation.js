@@ -2,6 +2,29 @@ const moment = require("moment");
 const getTargetWorkingModel = require("./getTargetWorkingModel");
 const Vacation = require("../models/Vacation");
 const logger = require("../utils/logger");
+const lodash = require("lodash");
+
+
+const equals = function equals(prev, act) {
+  let result = true;
+  
+  if ((!prev && !act))
+    return true;
+
+  if (
+    (prev && !act) ||
+    (!prev && act) ||
+    prev['1'] !== act['1'] ||
+    prev['2'] !== act['2'] ||
+    prev['3'] !== act['3'] ||
+    prev['4'] !== act['4'] ||
+    prev['5'] !== act['5'] ||
+    prev['6'] !== act['6']) {
+      result = false;
+  }
+
+  return result;
+}
 
 /**
  * 
@@ -16,17 +39,23 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
   let countVacationFrom = moment(fromStr);
   let till = moment(moment().year() + '-12-31');
   let actDay = moment(fromStr);
+  prevDay = lodash.cloneDeep(actDay);
+  prevWorkingModel = undefined;
+  let vacationPerWorkingDay = 0;
   while (actDay <= till) {
-
-
     const targetWorkingModel = getTargetWorkingModel(user.workingModels, actDay.format('YYYY-MM-DD'));
     if (targetWorkingModel) {
       let targetDayHours = targetWorkingModel ? targetWorkingModel[actDay.day()] : 0;
       if (targetDayHours !== undefined && targetDayHours > 0) {
-        vacationEntitlementTotal = vacationEntitlementTotal + getVacationPerWorkingDayInYear(targetWorkingModel, actDay.format('YYYY'));
+        // compute vacation per working day, if working model or year changed 
+        if (!equals(prevWorkingModel, targetWorkingModel) || actDay.year() != prevDay.year())
+          vacationPerWorkingDay = getVacationPerWorkingDayInYear(targetWorkingModel, actDay.format('YYYY'));
+        vacationEntitlementTotal = vacationEntitlementTotal + vacationPerWorkingDay
+
       }
     }
-
+    prevWorkingModel = lodash.cloneDeep(targetWorkingModel);
+    prevDay = lodash.cloneDeep(actDay);
     actDay = actDay.add(moment.duration({ 'days': 1 }));
   }
 
@@ -65,8 +94,6 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
  */
 function getVacationPerWorkingDayInYear(workingModel, targetYearNumber) {
 
-  // console.log("Rechnet getVacationPerWorkingDayInYear")
-
   let actDay = moment(targetYearNumber + "-01-01");
   const end = moment(targetYearNumber + "-12-31");
 
@@ -79,7 +106,6 @@ function getVacationPerWorkingDayInYear(workingModel, targetYearNumber) {
 
     actDay = actDay.add(moment.duration({ 'days': 1 }));
   }
-  // console.log("Rechnet VacationPerWorkingDayInYear: " + workingModel.vacationEntitlement / workingDays)
   return workingModel.vacationEntitlement / workingDays;
 }
 
