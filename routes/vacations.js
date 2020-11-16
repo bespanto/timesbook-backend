@@ -127,7 +127,6 @@ router.get("/byUser", auth, async (req, res) => {
 
   try {
     const vacations = await Vacation.find({ username: req.requestingUser.username });
-    logger.debug(vacations);
     res.status(200).send({ success: { vacations } });
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
@@ -173,14 +172,12 @@ router.post("/:username", auth, async (req, res) => {
   }
   if (!moment(req.body.from, moment.ISO_8601).isValid() ||
     !moment(req.body.till, moment.ISO_8601).isValid()) {
-    logger.error("'from' and 'till' must be valid dates")
     res.status(400).send({ errorCode: 4012, message: "The input contains not valid date" })
   } else {
 
     const start = moment.utc(req.body.from);
     const end = moment.utc(req.body.till);
     if (start.isAfter(end)) {
-      logger.error("'from' can not be later as 'till'")
       res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
     }
     else {
@@ -253,7 +250,7 @@ router.get("/:username/tillThisYear", auth, async (req, res) => {
       return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
       const remVac = await remainingVacation(req.requestingUser);
-      res.status(200).send({ success: { remainigVacation: remVac} });
+      res.status(200).send({ success: { remainigVacation: remVac } });
     }
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
@@ -261,6 +258,59 @@ router.get("/:username/tillThisYear", auth, async (req, res) => {
   }
 
 });
+
+
+/**
+ *  Gets all vacation entries by user from jwt
+ */
+router.get("/:from/:till", auth, async (req, res) => {
+  logger.info(`GET request on endpoint /vacation/${req.params.from}/${req.params.till}`);
+
+  if (!moment(req.params.from).isValid() ||
+    !moment(req.params.till).isValid())
+    res.status(400).send({ errorCode: 4012, message: "The input contains not valid date" })
+  else {
+    const start = moment.utc(req.params.from);
+    const end = moment.utc(req.params.till);
+    if (start.isAfter(end))
+      res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+
+    else {
+      try {
+        const vacations = await Vacation.find({
+          username: req.requestingUser.username,
+          status: 'approved',
+          $or: [{
+            $and: [
+              { from: { $gte: new Date(req.params.from) } },
+              { till: { $lte: new Date(req.params.till) } },
+            ],
+          },
+          {
+            $and: [
+              { from: { $gte: new Date(req.params.from) } },
+              { from: { $lte: new Date(req.params.till) } },
+            ],
+          },
+          {
+            $and: [
+              { till: { $gte: new Date(req.params.from) } },
+              { till: { $lte: new Date(req.params.till) } },
+            ],
+          }
+          ],
+        });
+        res.status(200).send({ success: { vacations: vacations } });
+
+      } catch (error) {
+        logger.error("Error while accessing Database: " + error);
+        res.status(500).send({ errorCode: 5001, message: error });
+      }
+    }
+  }
+
+});
+
 
 
 module.exports = router;
