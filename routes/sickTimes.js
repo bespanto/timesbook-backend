@@ -1,13 +1,11 @@
 const express = require("express");
 const validate = require("validate.js");
-const remainingVacation = require("../utils/remainingVacation");
 const router = express.Router();
 const moment = require("moment");
 const SickTime = require("../models/SickTime");
 const User = require("../models/User");
 const auth = require("./verifyToken");
 const logger = require("../utils/logger");
-const mailer = require("../utils/mailer");
 
 
 /**
