@@ -185,7 +185,10 @@ router.post("/:username", auth, async (req, res) => {
         if (req.requestingUser.username !== req.params.username)
           return res.status(403).send({ errorCode: 4010, message: "You have no permissions to change data for another user" });
         else {
-          const vacations = await Vacation.find({ username: req.requestingUser.username });
+          const vacations = await Vacation.find({
+            username: req.requestingUser.username,
+            status: { $ne: 'canceled' }
+          });
           let periodOverlap = false;
           for (let i = 0; i < vacations.length; i++) {
             const element = vacations[i];
