@@ -55,7 +55,6 @@ router.post("/", auth, async (req, res) => {
     !moment(req.body.till).isValid()) {
     res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
   } else {
-
     const start = moment.utc(req.body.from);
     const end = moment.utc(req.body.till);
     if (start.isAfter(end)) {
@@ -72,7 +71,7 @@ router.post("/", auth, async (req, res) => {
             till: req.body.till
           });
           const savedSickTime = await sickTime.save();
-          res.status(200).send({ success: savedSickTime});
+          res.status(200).send({ success: savedSickTime });
         }
       } catch (error) {
         logger.error("Error while accessing Database: " + error);
@@ -124,5 +123,53 @@ router.get("/:username", auth, async (req, res) => {
 
 });
 
+/**
+ *  Gets sick times by username for a period from-till
+ */
+router.get("/:username/:from/:till", auth, async (req, res) => {
+  logger.info(`GET request on endpoint /sickTime/${req.params.username}/${req.params.from}/${req.params.till}`);
+
+  if (req.requestingUser.username !== req.params.username && req.requestingUser.role !== 'admin')
+    res.status(403).send({ errorCode: 4010, message: "You have no permissions for this operation" });
+  else {
+    if (!moment(req.params.from).isValid() || !moment(req.params.till).isValid())
+      res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
+    else {
+      const start = moment.utc(req.params.from);
+      const end = moment.utc(req.params.till);
+      if (start.isAfter(end))
+        res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+      else {
+        try {
+          const sickTimes = await SickTime.find({ 
+            username: req.params.username,
+            $or: [{
+              $and: [
+                { from: { $gte: new Date(req.params.from) } },
+                { till: { $lte: new Date(req.params.till) } },
+              ],
+            },
+            {
+              $and: [
+                { from: { $gte: new Date(req.params.from) } },
+                { from: { $lte: new Date(req.params.till) } },
+              ],
+            },
+            {
+              $and: [
+                { till: { $gte: new Date(req.params.from) } },
+                { till: { $lte: new Date(req.params.till) } },
+              ],
+            }],
+          });
+          res.status(200).send({ success: sickTimes });
+        } catch (error) {
+          logger.error("Error while accessing Database: " + error);
+          res.status(500).send({ errorCode: 5001, message: error });
+        }
+      }
+    }
+  }
+});
 
 module.exports = router;
