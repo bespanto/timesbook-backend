@@ -297,8 +297,7 @@ router.get("/:from/:till", auth, async (req, res) => {
               { till: { $gte: new Date(req.params.from) } },
               { till: { $lte: new Date(req.params.till) } },
             ],
-          }
-          ],
+          }],
         });
         res.status(200).send({ success: { vacations: vacations } });
 
