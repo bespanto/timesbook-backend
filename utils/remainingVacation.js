@@ -3,11 +3,12 @@ const getTargetWorkingModel = require("./getTargetWorkingModel");
 const Vacation = require("../models/Vacation");
 const logger = require("../utils/logger");
 const lodash = require("lodash");
+const axios = require('axios');
 
 
 const equals = function equals(prev, act) {
   let result = true;
-  
+
   if ((!prev && !act))
     return true;
 
@@ -20,7 +21,7 @@ const equals = function equals(prev, act) {
     prev['4'] !== act['4'] ||
     prev['5'] !== act['5'] ||
     prev['6'] !== act['6']) {
-      result = false;
+    result = false;
   }
 
   return result;
@@ -33,6 +34,7 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
 
   let vacationEntitlementTotal = 0;
   let takenVacationDays = 0;
+  let countHolidays = 0
 
   // count vacation entitlement for each working day according working model
   const fromStr = moment(user.registrationDate).format('YYYY-MM-DD');
@@ -65,28 +67,50 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
       username: user.username,
       status: "approved"
     });
-    vacations.forEach((element) => {
+
+    for (let index = 0; index < vacations.length; index++) {
+      const element = vacations[index];
+
       const vacStart = moment(element.from);
       const vacEnd = moment(element.till);
 
       let vacActDay = moment(element.from)
+      let holidays;
+      prevDay = lodash.cloneDeep(vacActDay);
       while (vacActDay.isSameOrBefore(vacEnd)) {
         if (vacActDay.isBetween(countVacationFrom, till, undefined, '[]')) {
           const targetWorkingModel = getTargetWorkingModel(user.workingModels, vacActDay.format('YYYY-MM-DD'));
           let targetDayHours = targetWorkingModel ? targetWorkingModel[vacActDay.day()] : 0;
-          if (targetDayHours !== undefined && targetDayHours > 0)
+          if (targetDayHours !== undefined && targetDayHours > 0) {
             takenVacationDays++;
+
+            // count holidays
+            if (vacActDay.year() != prevDay.year())
+              holidays = await getHolidajys(vacActDay.year());
+
+            if (holidays)
+              for (const key in holidays['NATIONAL']) {
+                if (holidays['NATIONAL'].hasOwnProperty(key)) {
+                  const element = holidays['NATIONAL'][key];
+                  if (moment(vacActDay).isSame(element.datum, 'day')) {
+                    countHolidays++;
+                    logger.info("countHolidays: " + countHolidays)
+                    logger.info(key)
+                  }
+                }
+              }
+
+          }
         }
+        prevDay = lodash.cloneDeep(vacActDay);
         vacActDay = vacActDay.add(moment.duration({ 'days': 1 }));
       }
-    })
-
-
+    }
   } catch (error) {
     throw new Error("Unable to compute overtime " + error)
   }
 
-  return vacationEntitlementTotal - takenVacationDays;
+  return vacationEntitlementTotal - takenVacationDays + countHolidays;
 }
 
 /**
@@ -109,6 +133,21 @@ function getVacationPerWorkingDayInYear(workingModel, targetYearNumber) {
   return workingModel.vacationEntitlement / workingDays;
 }
 
+
+async function getHolidajys(year) {
+  const errorMsg = "Can't get holidays.";
+  const URL = `${process.env.HOLIDAY_API_URL}/?jahr=${year}`;
+  logger.info(URL);
+  const holidays = await axios.get(`${process.env.HOLIDAY_API_URL}/?jahr=${year}`)
+    .then((response) => response.data)
+    // .then((data) => {
+    //   return data;
+    // })
+    .catch((err) => {
+      logger.error(errorMsg + " No response from server.", err)
+    });
+  return holidays;
+}
 
 
 module.exports = remainingVacation;
