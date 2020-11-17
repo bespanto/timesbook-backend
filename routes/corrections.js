@@ -41,7 +41,6 @@ router.get("/:username/flextime", auth, async (req, res) => {
   try {
     if (req.requestingUser.role === 'admin' || req.requestingUser.username === req.params.username) {
       const corrections = await Correction.find({ username: req.params.username, type: "flextime" });
-      logger.info(corrections)
       res.status(200).send({ success: { corrections: corrections } });
     }
     else {
