@@ -1,6 +1,7 @@
 const express = require("express");
 const validate = require("validate.js");
 const remainingVacation = require("../utils/remainingVacation");
+const { getVacations } = require("../utils/TimeIntervalUtils");
 const router = express.Router();
 const moment = require("moment");
 const Vacation = require("../models/Vacation");
@@ -280,28 +281,7 @@ router.get("/:from/:till", auth, async (req, res) => {
 
     else {
       try {
-        const vacations = await Vacation.find({
-          username: req.requestingUser.username,
-          status: 'approved',
-          $or: [{
-            $and: [
-              { from: { $gte: new Date(req.params.from) } },
-              { till: { $lte: new Date(req.params.till) } },
-            ],
-          },
-          {
-            $and: [
-              { from: { $gte: new Date(req.params.from) } },
-              { from: { $lte: new Date(req.params.till) } },
-            ],
-          },
-          {
-            $and: [
-              { till: { $gte: new Date(req.params.from) } },
-              { till: { $lte: new Date(req.params.till) } },
-            ],
-          }],
-        });
+        const vacations = await getVacations(req.params.from, req.params.till, req.requestingUser.username);
         res.status(200).send({ success: { vacations: vacations } });
 
       } catch (error) {

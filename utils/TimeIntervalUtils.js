@@ -1,5 +1,6 @@
 
 const SickTime = require("../models/SickTime");
+const Vacation = require("../models/Vacation");
 const logger = require("../utils/logger");
 const axios = require('axios');
 const moment = require("moment");
@@ -29,6 +30,23 @@ const getTargetWorkingModel = (models, startTime) => {
     }
   return targetWorkingModel;
 }
+
+/**
+ * 
+ * @param {*} vacations 
+ * @param {*} day 
+ */
+const isVacationDay = (vacations, day) => {
+    let result = false
+    if (vacations) {
+      for (let index = 0; index < vacations.length; index++) {
+        const vacation = vacations[index];
+        if (day.isBetween(vacation.from, vacation.till, 'day', '[]'))
+          result = true;
+      }
+    }
+    return result;
+  }
 
 /**
  * 
@@ -116,9 +134,46 @@ const getSickTimes = async (year, user) => {
       throw new Error("Error while getting sick times: " + error);
     }
   }
+
+
+const getVacations = async (from, till, user) => {
+    try {
+        const vacations = await Vacation.find({
+          username: user.username,
+          status: 'approved',
+          $or: [{
+            $and: [
+              { from: { $gte: new Date(from) } },
+              { till: { $lte: new Date(till) } },
+            ],
+          },
+          {
+            $and: [
+              { from: { $gte: new Date(from) } },
+              { from: { $lte: new Date(till) } },
+            ],
+          },
+          {
+            $and: [
+              { till: { $gte: new Date(from) } },
+              { till: { $lte: new Date(till) } },
+            ],
+          }],
+        });
+        return vacations;
+
+      } catch (error) {
+        throw new Error("Error while gettin vacations: " + error);
+      }
+}
+
+
+
   
   exports.isSickDay = isSickDay;
   exports.isHoliday = isHoliday;
+  exports.isVacationDay = isVacationDay;
   exports.getHolidays = getHolidays;
   exports.getSickTimes = getSickTimes;
   exports.getTargetWorkingModel = getTargetWorkingModel;
+  exports.getVacations = getVacations;
