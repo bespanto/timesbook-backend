@@ -1,10 +1,13 @@
 const moment = require("moment");
-const getTargetWorkingModel = require("./getTargetWorkingModel");
+const {
+  isHoliday,
+  isSickDay,
+  getHolidays,
+  getSickTimes,
+  getTargetWorkingModel } = require("./TimeIntervalUtils");
 const Vacation = require("../models/Vacation");
-const SickTime = require("../models/SickTime");
-const logger = require("../utils/logger");
 const lodash = require("lodash");
-const axios = require('axios');
+const logger = require("../utils/logger");
 
 /**
  * 
@@ -78,7 +81,7 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
       const vacEnd = moment(element.till);
 
       let vacActDay = moment(element.from)
-      let holidays = await getHolidajys(vacActDay.year());
+      let holidays = await getHolidays(vacActDay.year());
       let sickTimes = await getSickTimes(vacActDay.year(), user);
       prevDay = lodash.cloneDeep(vacActDay);
       while (vacActDay.isSameOrBefore(vacEnd, 'day')) {
@@ -111,43 +114,6 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
   return vacationEntitlementTotal - takenVacationDays + countHolidays;
 }
 
-
-/**
- * 
- * @param {*} sickTimes 
- * @param {*} vacActDay 
- */
-function isSickDay(sickTimes, vacActDay) {
-  let result = false
-  if (sickTimes) {
-    for (let index = 0; index < sickTimes.length; index++) {
-      const sickTime = sickTimes[index];
-      if (vacActDay.isBetween(sickTime.from, sickTime.till, 'day', '[]'))
-        result = true;
-    }
-  }
-  return result;
-}
-
-/**
- * 
- * @param {*} holidays 
- * @param {*} vacActDay 
- */
-function isHoliday(holidays, vacActDay) {
-  let result = false
-  if (holidays)
-    for (const key in holidays['NATIONAL']) {
-      if (holidays['NATIONAL'].hasOwnProperty(key)) {
-        const element = holidays['NATIONAL'][key];
-        if (vacActDay.isSame(element.datum, 'day'))
-          result = true;
-      }
-    }
-  return result;
-}
-
-
 /**
  * 
  * @param {*} workingModel 
@@ -168,59 +134,6 @@ function getVacationPerWorkingDayInYear(workingModel, targetYearNumber) {
     actDay = actDay.add(moment.duration({ 'days': 1 }));
   }
   return workingModel.vacationEntitlement / workingDays;
-}
-
-/**
- * 
- * @param {*} year 
- */
-async function getHolidajys(year) {
-  const errorMsg = "Can't get holidays.";
-  const URL = `${process.env.HOLIDAY_API_URL}/?jahr=${year}`;
-  logger.info(URL);
-  const holidays = await axios.get(`${process.env.HOLIDAY_API_URL}/?jahr=${year}`)
-    .then((response) => response.data)
-    .catch((err) => {
-      logger.error(errorMsg + " No response from server.", err)
-    });
-  return holidays;
-}
-
-/**
- * 
- * @param {*} year 
- * @param {*} user 
- */
-async function getSickTimes(year, user) {
-  const from = year + "-01-01";
-  const till = year + "-12-31"
-  try {
-    const sickTimes = await SickTime.find({
-      username: user.username,
-      $or: [{
-        $and: [
-          { from: { $gte: new Date(from) } },
-          { till: { $lte: new Date(till) } },
-        ],
-      },
-      {
-        $and: [
-          { from: { $gte: new Date(from) } },
-          { from: { $lte: new Date(till) } },
-        ],
-      },
-      {
-        $and: [
-          { till: { $gte: new Date(from) } },
-          { till: { $lte: new Date(till) } },
-        ],
-      }],
-    });
-    return sickTimes;
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
-  }
 }
 
 
