@@ -281,7 +281,7 @@ router.get("/:from/:till", auth, async (req, res) => {
 
     else {
       try {
-        const vacations = await getVacations(req.params.from, req.params.till, req.requestingUser.username);
+        const vacations = await getVacations(req.params.from, req.params.till, req.requestingUser);
         res.status(200).send({ success: { vacations: vacations } });
 
       } catch (error) {
