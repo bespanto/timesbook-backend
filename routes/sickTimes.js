@@ -85,15 +85,56 @@ router.post("/", auth, async (req, res) => {
  *  Gets all sick times
  */
 router.get("/", auth, async (req, res) => {
-  logger.info(`GET request on endpoint /sickTime`);
+  logger.info(`GET request on endpoint /sickTime/
+    from=${req.query.from}, till=${req.query.till}`);
 
   try {
     if (req.requestingUser.role !== 'admin')
       return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
-      const users = await User.find({ organization: req.requestingUser.organization });
-      const sickTimes = await SickTime.find({ username: { $in: users.map(el => el.username) } });
-      res.status(200).send({ success: sickTimes });
+      if ((!req.query.from && req.query.till) || (req.query.from && !req.query.till))
+        res.status(400).send({ errorCode: 4026, message: "The query params 'from' and 'till' are wrong" })
+      else {
+        if (!moment(req.query.from).isValid() || !moment(req.query.till).isValid())
+          res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
+        else {
+          const start = moment.utc(req.query.from);
+          const end = moment.utc(req.query.till);
+          if (start.isAfter(end))
+            res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+          else {
+            const users = await User.find({ organization: req.requestingUser.organization });
+            let query;
+            if (req.query.from && req.query.till)
+              query = {
+                username: { $in: users.map(el => el.username) },
+                $or: [{
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { from: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { till: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                }],
+              }
+            else
+              query = { username: { $in: users.map(el => el.username) } }
+
+            const sickTimes = await SickTime.find(query);
+            res.status(200).send({ success: sickTimes });
+          }
+        }
+      }
     }
   } catch (error) {
     logger.error("Error while accessing Database: " + error);
@@ -102,70 +143,64 @@ router.get("/", auth, async (req, res) => {
 
 });
 
-
-/**
- *  Gets sick times by username
- */
-router.get("/:username", auth, async (req, res) => {
-  logger.info(`GET request on endpoint /sickTime/${req.params.username}`);
-
-  try {
-    if (req.requestingUser.username !== req.params.username || req.requestingUser.role !== 'admin')
-      return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
-    else {
-      const sickTimes = await SickTime.find({ username: req.params.username });
-      res.status(200).send({ success: sickTimes });
-    }
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
-  }
-
-});
 
 /**
  *  Gets sick times by username for a period from-till
  */
-router.get("/:username/:from/:till", auth, async (req, res) => {
-  logger.info(`GET request on endpoint /sickTime/${req.params.username}/${req.params.from}/${req.params.till}`);
+router.get("/:username/", auth, async (req, res) => {
+
+  logger.info(`GET request on endpoint /sickTime/${req.params.username}
+    from=${req.query.from}, till=${req.query.till}`);
 
   if (req.requestingUser.username !== req.params.username && req.requestingUser.role !== 'admin')
     res.status(403).send({ errorCode: 4010, message: "You have no permissions for this operation" });
   else {
-    if (!moment(req.params.from).isValid() || !moment(req.params.till).isValid())
-      res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
+    if ((!req.query.from && req.query.till) || (req.query.from && !req.query.till))
+      res.status(400).send({ errorCode: 4026, message: "The query params 'from' and 'till' are wrong" })
     else {
-      const start = moment.utc(req.params.from);
-      const end = moment.utc(req.params.till);
-      if (start.isAfter(end))
-        res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+      if (!moment(req.query.from).isValid() || !moment(req.query.till).isValid())
+        res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
       else {
-        try {
-          const sickTimes = await SickTime.find({ 
-            username: req.params.username,
-            $or: [{
-              $and: [
-                { from: { $gte: new Date(req.params.from) } },
-                { till: { $lte: new Date(req.params.till) } },
-              ],
-            },
-            {
-              $and: [
-                { from: { $gte: new Date(req.params.from) } },
-                { from: { $lte: new Date(req.params.till) } },
-              ],
-            },
-            {
-              $and: [
-                { till: { $gte: new Date(req.params.from) } },
-                { till: { $lte: new Date(req.params.till) } },
-              ],
-            }],
-          });
-          res.status(200).send({ success: sickTimes });
-        } catch (error) {
-          logger.error("Error while accessing Database: " + error);
-          res.status(500).send({ errorCode: 5001, message: error });
+        const start = moment.utc(req.query.from);
+        const end = moment.utc(req.query.till);
+        if (start.isAfter(end))
+          res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+        else {
+          try {
+            let query;
+            if (req.query.from && req.query.till)
+              query = {
+                username: req.params.username,
+                $or: [{
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { from: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { till: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                }],
+              }
+            else
+              query = {
+                username: req.params.username
+              }
+
+            const sickTimes = await SickTime.find(query);
+            res.status(200).send({ success: sickTimes });
+          } catch (error) {
+            logger.error("Error while accessing Database: " + error);
+            res.status(500).send({ errorCode: 5001, message: error });
+          }
         }
       }
     }

@@ -79,6 +79,10 @@ A day must be from last working model
 ### 4025
 An integer expected
 
+
+### 4026
+The query params 'from' and 'till' are wrong
+
 #
 ## 500 codes
 #
