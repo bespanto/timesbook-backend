@@ -1,6 +1,6 @@
 const moment = require("moment");
 const lodash = require("lodash");
-const { 
+const {
   getHolidays,
   getSickTimes,
   isHoliday,
@@ -27,21 +27,21 @@ const flextime = async function getFlextimeFromUserRegistration(user) {
   prevDay = lodash.cloneDeep(actDay);
   let holidays = await getHolidays(actDay.year());
   let sickTimes = await getSickTimes(actDay.year(), user);
-  let vacations = await getVacations(actDay.year()+"-01-01", actDay.year()+"-12-31", user);
+  let vacations = await getVacations(actDay.year() + "-01-01", actDay.year() + "-12-31", user);
   while (actDay.isSameOrBefore(till, 'day')) {
     const targetWorkingModel = getTargetWorkingModel(user.workingModels, actDay.format('YYYY-MM-DD'));
     let targetDayHours = targetWorkingModel ? targetWorkingModel[actDay.day()] : 0;
 
     if (actDay.year() != prevDay.year()) {
-      holidays = await getHolidajys(actDay.year());
+      holidays = await getHolidays(actDay.year());
       sickTimes = await getSickTimes(actDay.year(), user);
-      vacations = await getVacations(actDay.year()+"-01-01", actDay.year()+"-12-31", user);
+      vacations = await getVacations(actDay.year() + "-01-01", actDay.year() + "-12-31", user);
     }
     if (!isSickDay(sickTimes, actDay) && !isHoliday(holidays, actDay) && !isVacationDay(vacations, actDay))
       shoudToBeHours = shoudToBeHours + (targetDayHours === undefined ? 0 : targetDayHours);
 
-      prevDay = lodash.cloneDeep(actDay);
-      actDay = actDay.add(moment.duration({ 'days': 1 }));
+    prevDay = lodash.cloneDeep(actDay);
+    actDay = actDay.add(moment.duration({ 'days': 1 }));
   }
   try {
     const bookingEntries = await BookingEntry.find({

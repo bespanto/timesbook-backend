@@ -36,7 +36,7 @@ router.delete("/:id", auth, async (req, res) => {
  *
  */
 router.get("/:username/flextime", auth, async (req, res) => {
-  logger.info(`GET request on endpoint '/correction/${req.params.username}/flextime`);
+  logger.info(`GET request on endpoint '/correction/${req.params.username}/flextime'`);
 
   try {
     if (req.requestingUser.role === 'admin' || req.requestingUser.username === req.params.username) {
