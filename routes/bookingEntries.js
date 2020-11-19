@@ -100,7 +100,7 @@ function trimBody(body) {
  */
 router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
   logger.info(
-    `GET - username: ${req.params.username}, from: ${req.params.fromDay}, till: ${req.params.tillDay}`
+    `GET request on endpoint /bookEntries/${req.params.username}/${req.params.fromDay}/${req.params.tillDay}`
   );
   try {
     const day = checkStartEnd(req.params.fromDay, req.params.tillDay);
@@ -123,7 +123,7 @@ router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
  *
  */
 router.patch("/:username", auth, async (req, res) => {
-  logger.info("PACTH - username: " + req.params.username + ", body: " +JSON.stringify(req.body));
+  logger.info("PACTH - username: " + req.params.username + ", body: " + JSON.stringify(req.body));
   try {
     body = trimBody(req.body);
     checkTimes(body.day, body.start, body.end, body.pause);
@@ -141,11 +141,11 @@ router.patch("/:username", auth, async (req, res) => {
       },
       { upsert: true }
     );
-    res.json({success: {bookingEntry: req.body}});
+    res.json({ success: { bookingEntry: req.body } });
   } catch (error) {
     if (error.name === "InvalidDateException") {
       logger.error(error.message);
-      res.status(400).json({ errorCode:4019, message: error.message });
+      res.status(400).json({ errorCode: 4019, message: error.message });
     } else {
       logger.error("Error while accessing the database:" + error);
       res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
@@ -167,7 +167,7 @@ router.delete("/:username/:day", auth, async (req, res) => {
       day: day,
       username: req.params.username,
     });
-    res.status(200).json({success: {bookingEntry: deletedBookingEntry}});
+    res.status(200).json({ success: { bookingEntry: deletedBookingEntry } });
   } catch (error) {
     logger.error("Error while accessing the database:" + error);
     res.status(500).send({ errorCode: 5001, message: "Error while accessing the database" });
