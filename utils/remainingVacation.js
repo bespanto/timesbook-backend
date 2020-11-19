@@ -92,7 +92,7 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
             takenVacationDays++;
 
             if (vacActDay.year() != prevDay.year()) {
-              holidays = await getHolidajys(vacActDay.year());
+              holidays = await getHolidays(vacActDay.year());
               sickTimes = await getSickTimes(vacActDay.year(), user);
             }
             if (isSickDay(sickTimes, vacActDay) || isHoliday(holidays, vacActDay))

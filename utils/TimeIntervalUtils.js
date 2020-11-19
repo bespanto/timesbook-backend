@@ -136,10 +136,10 @@ const getSickTimes = async (year, user) => {
 }
 
 
-const getVacations = async (from, till, username) => {
+const getVacations = async (from, till, user) => {
   try {
     const vacations = await Vacation.find({
-      username: username,
+      username: user.username,
       status: 'approved',
       $or: [{
         $and: [
@@ -163,7 +163,7 @@ const getVacations = async (from, till, username) => {
     return vacations;
 
   } catch (error) {
-    throw new Error("Error while gettin vacations: " + error);
+    throw new Error("Error while getting vacations: " + error);
   }
 }
 
