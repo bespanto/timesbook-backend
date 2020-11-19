@@ -100,7 +100,7 @@ function trimBody(body) {
  */
 router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
   logger.info(
-    `GET request on endpoint /bookEntries/${req.params.username}/${req.params.fromDay}/${req.params.tillDay}`
+    `GET request on endpoint /bookingEntries/${req.params.username}/${req.params.fromDay}/${req.params.tillDay}`
   );
   try {
     const day = checkStartEnd(req.params.fromDay, req.params.tillDay);
@@ -123,7 +123,8 @@ router.get("/:username/:fromDay/:tillDay", auth, async (req, res) => {
  *
  */
 router.patch("/:username", auth, async (req, res) => {
-  logger.info("PACTH - username: " + req.params.username + ", body: " + JSON.stringify(req.body));
+  logger.info(`PACTH - request on endpoint /bookingEntries/${req.params.username}
+   body: ${JSON.stringify(req.body)}`);
   try {
     body = trimBody(req.body);
     checkTimes(body.day, body.start, body.end, body.pause);
@@ -158,9 +159,7 @@ router.patch("/:username", auth, async (req, res) => {
  *
  */
 router.delete("/:username/:day", auth, async (req, res) => {
-  logger.info(
-    `DELETE - username: ${req.params.username}, day: ${req.params.day}`
-  );
+  logger.info(`DELETE - request on endpoint '/bookingEntries/${req.params.username}/${req.params.day}`);
   try {
     const day = checkDay(req.params.day);
     const deletedBookingEntry = await BookingEntry.deleteMany({
