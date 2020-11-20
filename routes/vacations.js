@@ -199,8 +199,8 @@ router.get("/remaining", auth, async (req, res) => {
     username=${req.query.username}`);
 
   try {
-    if (req.requestingUser.username !== req.query.username || req.requestingUser.role !== 'admin')
-      return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
+    if (req.requestingUser.username !== req.query.username && req.requestingUser.role !== 'admin')
+      res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
       const remVac = await remainingVacation(req.requestingUser);
       res.status(200).send({ success: { remainigVacation: remVac } });
@@ -221,7 +221,7 @@ router.get("/", auth, async (req, res) => {
     username=${req.query.username} from=${req.query.from}, till=${req.query.till}`);
 
   try {
-    if (req.requestingUser.role !== 'admin')
+    if (req.requestingUser.role !== 'admin' && req.requestingUser.username !== req.query.username)
       return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
       if ((!req.query.from && req.query.till) || (req.query.from && !req.query.till))
