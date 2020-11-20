@@ -90,7 +90,6 @@ const isHoliday = (holidays, day) => {
 const getHolidays = async (year) => {
   const errorMsg = "Can't get holidays.";
   const URL = `${process.env.HOLIDAY_API_URL}/?jahr=${year}`;
-  logger.info(URL);
   const holidays = await axios.get(`${process.env.HOLIDAY_API_URL}/?jahr=${year}`)
     .then((response) => response.data)
     .catch((err) => {
@@ -104,9 +103,7 @@ const getHolidays = async (year) => {
  * @param {*} year 
  * @param {*} user 
  */
-const getSickTimes = async (year, user) => {
-  const from = year + "-01-01";
-  const till = year + "-12-31"
+const getSickTimes = async (from, till, user) => {
   try {
     const sickTimes = await SickTime.find({
       username: user.username,

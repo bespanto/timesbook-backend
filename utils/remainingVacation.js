@@ -82,7 +82,7 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
 
       let vacActDay = moment(element.from)
       let holidays = await getHolidays(vacActDay.year());
-      let sickTimes = await getSickTimes(vacActDay.year(), user);
+      let sickTimes = await getSickTimes(vacActDay.year() + "-01-01", vacActDay.year() + "-12-31", user);
       prevDay = lodash.cloneDeep(vacActDay);
       while (vacActDay.isSameOrBefore(vacEnd, 'day')) {
         if (vacActDay.isBetween(countVacationFrom, till, 'day', '[]')) {
@@ -93,7 +93,7 @@ const remainingVacation = async function getVacationFromUserRegistrationTillThis
 
             if (vacActDay.year() != prevDay.year()) {
               holidays = await getHolidays(vacActDay.year());
-              sickTimes = await getSickTimes(vacActDay.year(), user);
+              sickTimes = await getSickTimes(vacActDay.year() + "-01-01", vacActDay.year() + "-12-31", user);
             }
             if (isSickDay(sickTimes, vacActDay) || isHoliday(holidays, vacActDay))
               countHolidays++;
