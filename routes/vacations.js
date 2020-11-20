@@ -69,6 +69,7 @@ router.patch("/:id", auth, async (req, res) => {
 
 });
 
+
 /**
  *  Deletes a specific vacation
  */
@@ -85,57 +86,6 @@ router.delete("/:id", auth, async (req, res) => {
 
 });
 
-/**
- *  Gets all vacation entries by user from jwt
- */
-router.get("/byOrga", auth, async (req, res) => {
-  logger.info("GET request on endpoint /byOrga. Name: " + req.query.name);
-
-  try {
-    let usersFromOrga;
-    if (req.query.name)
-      usersFromOrga = await User.find({ name: req.query.name, organization: req.requestingUser.organization });
-    else
-      usersFromOrga = await User.find({ organization: req.requestingUser.organization });
-    const vacations = await Vacation.find({ username: { $in: usersFromOrga.map(item => item.username) } });
-
-    let objects = [];
-    vacations.forEach(vac => {
-      let name = usersFromOrga.find(element => element.username === vac.username).name
-      let obj = {};
-      obj.name = name;
-      obj._id = vac._id;
-      obj.username = vac.username;
-      obj.from = vac.from;
-      obj.till = vac.till;
-      obj.status = vac.status
-      objects.push(obj);
-    })
-
-    res.status(200).send({ success: { vacations: objects } });
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
-  }
-
-});
-
-/**
- *  Gets all vacation entries by user from jwt
- */
-router.get("/byUser", auth, async (req, res) => {
-  logger.info("GET request on endpoint '/vacation/'");
-
-  try {
-    const vacations = await Vacation.find({ username: req.requestingUser.username });
-    res.status(200).send({ success: { vacations } });
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
-  }
-
-});
-
 
 /**
  * Create a vacation entry for an user
@@ -143,7 +93,6 @@ router.get("/byUser", auth, async (req, res) => {
  */
 router.post("/:username", auth, async (req, res) => {
   logger.info("POST request on endpoint '/vacation/:username'. Username: " + req.params.username + " Body: " + req.body);
-
 
   validate.extend(validate.validators.datetime, {
     // The value is guaranteed not to be null or undefined but otherwise it
@@ -175,7 +124,6 @@ router.post("/:username", auth, async (req, res) => {
     !moment(req.body.till, moment.ISO_8601).isValid()) {
     res.status(400).send({ errorCode: 4012, message: "The input contains not valid date" })
   } else {
-
     const start = moment.utc(req.body.from);
     const end = moment.utc(req.body.till);
     if (start.isAfter(end)) {
@@ -244,13 +192,14 @@ router.post("/:username", auth, async (req, res) => {
 
 
 /**
- *  Gets all vacation entries by user from jwt
+ *  Gets vacations by username
  */
-router.get("/:username/tillThisYear", auth, async (req, res) => {
-  logger.info("GET request on endpoint '/vacation/:username/tillThisYear'");
+router.get("/remaining", auth, async (req, res) => {
+  logger.info(`GET request on endpoint /vacation/remaining
+    username=${req.query.username}`);
 
   try {
-    if (req.requestingUser.username !== req.params.username || req.requestingUser.role !== 'admin')
+    if (req.requestingUser.username !== req.query.username || req.requestingUser.role !== 'admin')
       return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
       const remVac = await remainingVacation(req.requestingUser);
@@ -265,34 +214,81 @@ router.get("/:username/tillThisYear", auth, async (req, res) => {
 
 
 /**
- *  Gets all vacation entries by user from jwt
+ *  Gets all vacations filtering by username, from and till
  */
-router.get("/:from/:till", auth, async (req, res) => {
-  logger.info(`GET request on endpoint /vacation/${req.params.from}/${req.params.till}`);
+router.get("/", auth, async (req, res) => {
+  logger.info(`GET request on endpoint /vacation/
+    username=${req.query.username} from=${req.query.from}, till=${req.query.till}`);
 
-  if (!moment(req.params.from).isValid() ||
-    !moment(req.params.till).isValid())
-    res.status(400).send({ errorCode: 4012, message: "The input contains not valid date" })
-  else {
-    const start = moment.utc(req.params.from);
-    const end = moment.utc(req.params.till);
-    if (start.isAfter(end))
-      res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
-
+  try {
+    if (req.requestingUser.role !== 'admin')
+      return res.status(403).send({ errorCode: 4010, message: "You have no permissions to retrive data for another user" });
     else {
-      try {
-        const vacations = await getVacations(req.params.from, req.params.till, req.requestingUser);
-        res.status(200).send({ success: { vacations: vacations } });
+      if ((!req.query.from && req.query.till) || (req.query.from && !req.query.till))
+        res.status(400).send({ errorCode: 4026, message: "The query params 'from' and 'till' are wrong" })
+      else {
+        if (!moment(req.query.from).isValid() || !moment(req.query.till).isValid())
+          res.status(400).send({ errorCode: 4012, message: "The input contains invalid date" })
+        else {
+          const start = moment.utc(req.query.from);
+          const end = moment.utc(req.query.till);
+          if (start.isAfter(end))
+            res.status(400).send({ errorCode: 4013, message: "'from' can not be later as 'till'" })
+          else {
+            let queryUsers = { organization: req.requestingUser.organization }
+            if (req.query.username)
+              queryUsers.username = req.query.username;
+            const users = await User.find(queryUsers);
+            let query;
+            if (req.query.from && req.query.till)
+              query = {
+                username: { $in: users.map(el => el.username) },
+                $or: [{
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { from: { $gte: new Date(req.query.from) } },
+                    { from: { $lte: new Date(req.query.till) } },
+                  ],
+                },
+                {
+                  $and: [
+                    { till: { $gte: new Date(req.query.from) } },
+                    { till: { $lte: new Date(req.query.till) } },
+                  ],
+                }],
+              }
+            else
+              query = { username: { $in: users.map(el => el.username) } }
 
-      } catch (error) {
-        logger.error("Error while accessing Database: " + error);
-        res.status(500).send({ errorCode: 5001, message: error });
+            const vacations = await Vacation.find(query);
+
+            let objects = [];
+            vacations.forEach(vac => {
+              let name = users.find(element => element.username === vac.username).name
+              let obj = {};
+              obj.name = name;
+              obj._id = vac._id;
+              obj.username = vac.username;
+              obj.from = vac.from;
+              obj.till = vac.till;
+              obj.status = vac.status
+              objects.push(obj);
+            })
+            res.status(200).send({ success: objects });
+          }
+        }
       }
     }
+  } catch (error) {
+    logger.error("Error while accessing Database: " + error);
+    res.status(500).send({ errorCode: 5001, message: error });
   }
 
 });
-
-
 
 module.exports = router;
