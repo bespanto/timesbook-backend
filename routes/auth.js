@@ -1,4 +1,6 @@
 const express = require("express");
+const axios = require('axios');
+const FormData = require('form-data')
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -80,7 +82,7 @@ router.patch("/confirmAdminAccount", async (req, res) => {
   logger.info("POST request on endpoint '/auth/confirmAdminAccount'. Body: " + JSON.stringify(req.body));
 
   const user = await User.findOne({ username: req.body.username, });
-  if(!user){
+  if (!user) {
     logger.error(`User was not found for the given username (e-mail): ${req.body.username}`);
     return res.status(400).send({ errorCode: 4003, message: "User was not found for the given username (e-mail)" });
   }
@@ -169,71 +171,81 @@ router.post("/setPass", async (req, res) => {
  *
  */
 router.post("/register", async (req, res) => {
-  logger.info(
-    "POST request on endpoint '/auth/register'. Body: " + JSON.stringify(req.body)
-  );
+  logger.info(`POST request on endpoint '/auth/register'
+    Body: " + ${JSON.stringify(req.body)}`);
 
-  // check e-mail in DB
-  const userExists = await User.findOne({ username: req.body.username });
-  if (userExists) {
-    logger.error("The user cannot be registered. E-mail already exists: " + req.body.username);
-    return res.status(400).send({ errorCode: 4001, message: "The user cannot be registered. E-mail already exists: " + req.body.username, });
-  }
 
-  //check, if admin account for orga exists
-  const adminForOrgaExists = await User.findOne({ organization: req.body.organization, role: "admin", });
-  if (adminForOrgaExists) {
-    logger.error(
-      "The user cannot '" + req.body.username + "' be registered. The organization '" +
-      req.body.organization + "' has already admin account: " + req.body.username
-    );
-    return res.status(400).send({
-      errorCode: 4002,
-      message:
-        "The user cannot be registered. Admin account already exists for organization: " +
-        req.body.organization,
-    });
-  }
-
-  // send confirmation e-mail
-  const randString = cryptoRandomString({ length: 30 });
-  mailer(
-    req.body.username,
-    "Registrierung bei TimesBook abschließen",
-    "<p>Sehr geehrter Nutzer,</p>" +
-    `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung des Zeiterfassunssystems 'TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p>` +
-    `<p><a href="${process.env.FRONTEND_URL}/confirmAccount?username=${req.body.username}&regKey=${randString}">${process.env.FRONTEND_URL}confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
-    "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
-    "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
-    "TimesBook")
-    .then(() => {
-      logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
+  const recaptchaResult = await axios.post(`${process.env.RECAPTCHA_API_URL}?secret=${process.env.RECAPTCHA_SECRET}&response=${req.body.recaptchaKey}`,
+    {},
+    {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
-    .catch((err) => {
-      logger.error("Error while sending e-mail: " + err);
-      res
-        .status(500)
-        .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
-    });
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
-    const user = new User({
-      name: req.body.name,
-      username: req.body.username,
-      password: hashedPassword,
-      role: "admin",
-      organization: req.body.organization,
-      registrationKey: randString,
-    });
+  if (!recaptchaResult.data.success)
+    res.status(400).send({ errorCode: 4027, message: "Recaptcha verification failed" });
+  else {
+    // check e-mail in DB
+    const userExists = await User.findOne({ username: req.body.username });
+    if (userExists) {
+      logger.error("The user cannot be registered. E-mail already exists: " + req.body.username);
+      return res.status(400).send({ errorCode: 4001, message: "The user cannot be registered. E-mail already exists: " + req.body.username, });
+    }
 
-    const savedUser = await user.save();
-    logger.debug(JSON.stringify(savedUser));
-    res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was registered` });
-  } catch (error) {
-    logger.error("Error while accessing Database: " + error);
-    res.status(500).send({ errorCode: 5001, message: error });
+    //check, if admin account for orga exists
+    const adminForOrgaExists = await User.findOne({ organization: req.body.organization, role: "admin", });
+    if (adminForOrgaExists) {
+      logger.error(
+        "The user cannot '" + req.body.username + "' be registered. The organization '" +
+        req.body.organization + "' has already admin account: " + req.body.username
+      );
+      return res.status(400).send({
+        errorCode: 4002,
+        message:
+          "The user cannot be registered. Admin account already exists for organization: " +
+          req.body.organization,
+      });
+    }
+
+    // send confirmation e-mail
+    const randString = cryptoRandomString({ length: 30 });
+    mailer(
+      req.body.username,
+      "Registrierung bei TimesBook abschließen",
+      "<p>Sehr geehrter Nutzer,</p>" +
+      `<p>Sie haben sich als Verwalter (admin) der Organisation ${req.body.organization} zur Nutzung des Zeiterfassunssystems 'TimesBook’ angemeldet. Bitte schließen Sie Ihre Registrierung unter folgendem Link ab:</p>` +
+      `<p><a href="${process.env.FRONTEND_URL}/confirmAccount?username=${req.body.username}&regKey=${randString}">${process.env.FRONTEND_URL}confirmAccount?username=${req.body.username}&regKey=${randString}</a></p>` +
+      "<p>TimesBook wünscht Ihnen gute und angenehme Arbeits- und Urlaubstage.<p/>" +
+      "<p>Vielen Dank für Ihre Registrierung!<p/><br/>" +
+      "TimesBook")
+      .then(() => {
+        logger.info("Admin '" + req.body.username + "' for organisation '" + req.body.organization + "' was invited");
+      })
+      .catch((err) => {
+        logger.error("Error while sending e-mail: " + err);
+        res
+          .status(500)
+          .send({ errorCode: 5002, message: "User cannot be invited. Error while sending e-mail." });
+      });
+
+    try {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(req.body.password, salt);
+      const user = new User({
+        name: req.body.name,
+        username: req.body.username,
+        password: hashedPassword,
+        role: "admin",
+        organization: req.body.organization,
+        registrationKey: randString,
+      });
+
+      const savedUser = await user.save();
+      logger.debug(JSON.stringify(savedUser));
+      res.status(200).send({ success: `Admin '${req.body.username}' for organisation '${req.body.organization}' was registered` });
+    } catch (error) {
+      logger.error("Error while accessing Database: " + error);
+      res.status(500).send({ errorCode: 5001, message: error });
+    }
   }
 });
 
@@ -287,7 +299,7 @@ router.post("/login", async (req, res) => {
   const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {
     expiresIn: 86400,
   });
-  res.header("auth-token", token).send({success: {jwt: token} });
+  res.header("auth-token", token).send({ success: { jwt: token } });
 });
 
 

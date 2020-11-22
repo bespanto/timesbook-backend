@@ -83,6 +83,9 @@ An integer expected
 ### 4026
 The query params 'from' and 'till' are wrong
 
+### 4027
+Recaptcha verification failed
+
 #
 ## 500 codes
 #
